@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#120f25">
+    <title>Ledger Legends</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="menu">
+    <div class="menu-background" aria-hidden="true"></div>
+
+    <main class="menu-start-screen">
+        <section class="start-screen-card" aria-labelledby="menuTitle">
+            <p class="eyebrow">Auburn MBA Core Accounting</p>
+            <h1 id="menuTitle">Ledger Legends</h1>
+            <p class="hero-copy">
+                Leap across platforms, avoid the lava, and answer accounting questions to survive the vault.
+            </p>
+
+            <div class="start-actions">
+                <button class="start-image-button" type="button" onclick="openCategoryPanel()" aria-label="Start Game">
+                    <img src="assets/startgame.png" alt="Start Game">
+                </button>
+                <button id="howToPlayButton" class="secondary-button menu-button" type="button" onclick="toggleHowToPlay()">How to Play</button>
+            </div>
+
+            <section id="categoryPanel" class="menu-config hidden" aria-label="Game setup">
+                <p class="config-title">Choose Your Question Set</p>
+                <div class="config-row">
+                    <label class="config-label" for="categorySelect">Question Category</label>
+                    <select id="categorySelect" class="menu-select">
+                        <option value="cost">Cost Accounting</option>
+                        <option value="financial">Financial Accounting</option>
+                        <option value="managerial">Managerial Accounting</option>
+                        <option value="mixed" selected>Mixed</option>
+                    </select>
+                </div>
+                <div class="category-actions">
+                    <button class="primary-button" type="button" onclick="launchGame()">Begin Run</button>
+                    <button class="secondary-button menu-button" type="button" onclick="closeCategoryPanel()">Back</button>
+                </div>
+            </section>
+
+            <section id="howToPlayPanel" class="how-to-play-panel hidden">
+                <p>Desktop: Arrow keys or A/D to move, Space or Up to jump.</p>
+                <p>Mobile: Hold left or right side to move, tap to jump.</p>
+                <p>Falling in lava triggers an accounting challenge. Correct answers keep the run alive.</p>
+            </section>
+
+            <section class="menu-dev-tools" aria-label="Developer mode">
+                <label class="dev-mode-toggle" for="devModeToggle">
+                    <input id="devModeToggle" type="checkbox">
+                    <span>Enable Developer Mode</span>
+                </label>
+                <p class="config-note">For testing only. In-game controls will appear at the top when enabled.</p>
+            </section>
+
+            <p class="menu-footnote">Built for Auburn University MBA accounting learning.</p>
+        </section>
+    </main>
+
+    <script>
+    const SETTINGS_STORAGE_KEY = "ledger-legends-settings";
+
+    function readGameSettings() {
+        try {
+            return JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function saveGameSettings() {
+        const category = document.getElementById("categorySelect").value;
+        const devMode = document.getElementById("devModeToggle").checked;
+        window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
+            category: category,
+            devMode: devMode
+        }));
+    }
+
+    function openCategoryPanel() {
+        document.getElementById("categoryPanel").classList.remove("hidden");
+        document.getElementById("howToPlayButton").classList.add("hidden");
+        document.getElementById("howToPlayPanel").classList.add("hidden");
+        document.getElementById("categorySelect").focus();
+    }
+
+    function closeCategoryPanel() {
+        document.getElementById("categoryPanel").classList.add("hidden");
+        document.getElementById("howToPlayButton").classList.remove("hidden");
+    }
+
+    function launchGame() {
+        saveGameSettings();
+        window.location.href = "game.html";
+    }
+
+    function toggleHowToPlay() {
+        const panel = document.getElementById("howToPlayPanel");
+        panel.classList.toggle("hidden");
+    }
+
+    (function hydrateSettings() {
+        const settings = readGameSettings();
+        const categorySelect = document.getElementById("categorySelect");
+        const devModeToggle = document.getElementById("devModeToggle");
+
+        if (settings.category && categorySelect.querySelector(`option[value="${settings.category}"]`)) {
+            categorySelect.value = settings.category;
+        }
+
+        devModeToggle.checked = !!settings.devMode;
+    })();
+    </script>
+</body>
+</html>
