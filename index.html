@@ -3,65 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#120f25">
+    <meta name="theme-color" content="#0d0b10">
     <title>Ledger Legends</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="menu">
     <div class="menu-background" aria-hidden="true"></div>
+    <div class="menu-bird-sky" aria-hidden="true">
+        <img class="menu-bird menu-bird-one" src="assets/birdsprite_wingsup.png" alt="">
+        <img class="menu-bird menu-bird-two" src="assets/birdsprite_wingsup.png" alt="">
+        <img class="menu-bird menu-bird-three" src="assets/birdsprite_wingsup.png" alt="">
+    </div>
 
-    <main class="menu-start-screen">
-        <section class="start-screen-card" aria-labelledby="menuTitle">
-            <p class="eyebrow">Auburn MBA Core Accounting</p>
-            <h1 id="menuTitle">Ledger Legends</h1>
-            <p class="hero-copy">
-                Leap across platforms, avoid the lava, and answer accounting questions to survive the vault.
-            </p>
-
-            <div class="start-actions">
-                <button class="start-image-button" type="button" onclick="openCategoryPanel()" aria-label="Start Game">
-                    <img src="assets/startgame.png" alt="Start Game">
-                </button>
-                <button id="howToPlayButton" class="secondary-button menu-button" type="button" onclick="toggleHowToPlay()">How to Play</button>
+    <main class="menu-screen">
+        <section class="menu-stack" aria-labelledby="menuTitle">
+            <h1 id="menuTitle" class="sr-only">Ledger Legends</h1>
+            <div class="menu-title-wrap" aria-hidden="true">
+                <img class="menu-title-image" src="assets/UI_title.png" alt="">
             </div>
 
-            <section id="categoryPanel" class="menu-config hidden" aria-label="Game setup">
-                <p class="config-title">Choose Your Question Set</p>
-                <div class="config-row">
-                    <label class="config-label" for="categorySelect">Question Category</label>
-                    <select id="categorySelect" class="menu-select">
-                        <option value="cost">Cost Accounting</option>
-                        <option value="financial">Financial Accounting</option>
-                        <option value="managerial">Managerial Accounting</option>
-                        <option value="mixed" selected>Mixed</option>
-                    </select>
-                </div>
-                <div class="category-actions">
-                    <button class="primary-button" type="button" onclick="launchGame()">Begin Run</button>
-                    <button class="secondary-button menu-button" type="button" onclick="closeCategoryPanel()">Back</button>
-                </div>
-            </section>
-
-            <section id="howToPlayPanel" class="how-to-play-panel hidden">
-                <p>Desktop: Arrow keys or A/D to move, Space or Up to jump.</p>
-                <p>Mobile: Hold left or right side to move, tap to jump.</p>
-                <p>Falling in lava triggers an accounting challenge. Correct answers keep the run alive.</p>
-            </section>
-
-            <section class="menu-dev-tools" aria-label="Developer mode">
-                <label class="dev-mode-toggle" for="devModeToggle">
-                    <input id="devModeToggle" type="checkbox">
-                    <span>Enable Developer Mode</span>
+            <nav class="menu-list" aria-label="Main menu">
+                <button id="startGameButton" class="menu-action" type="button">Start Game</button>
+                <button id="howToPlayButton" class="menu-action" type="button">How to Play</button>
+                <label class="menu-toggle-row" for="devModeToggle">
+                    <span class="menu-action-label">Enable Developer Mode</span>
+                    <span class="menu-toggle-control">
+                        <input id="devModeToggle" type="checkbox">
+                        <span class="menu-toggle-box" aria-hidden="true"></span>
+                    </span>
                 </label>
-                <p class="config-note">For testing only. In-game controls will appear at the top when enabled.</p>
-            </section>
-
-            <p class="menu-footnote">Built for Auburn University MBA accounting learning.</p>
+            </nav>
         </section>
     </main>
 
+    <div class="menu-runner-lane" aria-hidden="true">
+        <div id="menuRunnerBubble" class="menu-runner-bubble">Easy jump!</div>
+        <img id="menuMonster" class="menu-monster-sprite" src="assets/monster-lava.png" alt="">
+        <img id="menuRunner" class="menu-runner-sprite" src="assets/player_run.png" alt="">
+    </div>
+
     <script>
     const SETTINGS_STORAGE_KEY = "ledger-legends-settings";
+    const MENU_DIALOGUE_LINES = [
+        "Easy jump!",
+        "Stay focused!",
+        "One step at a time.",
+        "Don't mess this up...",
+        "I'm flying now!",
+        "Too fast, too clean!",
+        "Lock in, let's go!",
+        "No mistakes!",
+        "That was close!",
+        "Keep it moving!",
+        "I'm not falling today!",
+        "Perfect timing!",
+        "Let's go again!",
+        "I won't choke this run!",
+        "Clean run, clean run!",
+        "Alright, here we go!",
+        "Just a little further!",
+        "I can do this all day!",
+        "Finish strong!",
+        "Alright... time to pass this test.",
+        "Did I study enough for this?",
+        "I definitely should've reviewed more...",
+        "Debit on the left... right?",
+        "Stay calm, I know this stuff.",
+        "Balance the sheet, balance the run.",
+        "No mistakes... no mistakes...",
+        "I can't fail this class.",
+        "Think... what did the professor say?",
+        "Assets equal liabilities... plus equity!",
+        "Okay, I remember this one!",
+        "Don't panic, just keep moving.",
+        "I need this grade.",
+        "Alright, focus up!",
+        "This is just like practice... I think.",
+        "Please let this be on the test.",
+        "I'm actually getting this!",
+        "Wait... that didn't look right.",
+        "One question at a time.",
+        "I'm passing this. No matter what."
+    ];
+    const HOW_TO_PLAY_MESSAGE = [
+        "Desktop: Arrow keys or A/D move.",
+        "Jump: Space, Up, or W.",
+        "Mobile: Hold left or right side to move and tap to jump.",
+        "Falling in lava triggers an accounting challenge."
+    ].join("\n");
 
     function readGameSettings() {
         try {
@@ -72,24 +101,12 @@
     }
 
     function saveGameSettings() {
-        const category = document.getElementById("categorySelect").value;
+        const settings = readGameSettings();
         const devMode = document.getElementById("devModeToggle").checked;
         window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
-            category: category,
+            category: typeof settings.category === "string" ? settings.category : "mixed",
             devMode: devMode
         }));
-    }
-
-    function openCategoryPanel() {
-        document.getElementById("categoryPanel").classList.remove("hidden");
-        document.getElementById("howToPlayButton").classList.add("hidden");
-        document.getElementById("howToPlayPanel").classList.add("hidden");
-        document.getElementById("categorySelect").focus();
-    }
-
-    function closeCategoryPanel() {
-        document.getElementById("categoryPanel").classList.add("hidden");
-        document.getElementById("howToPlayButton").classList.remove("hidden");
     }
 
     function launchGame() {
@@ -97,21 +114,232 @@
         window.location.href = "game.html";
     }
 
-    function toggleHowToPlay() {
-        const panel = document.getElementById("howToPlayPanel");
-        panel.classList.toggle("hidden");
+    function showHowToPlay() {
+        window.alert(HOW_TO_PLAY_MESSAGE);
     }
 
-    (function hydrateSettings() {
-        const settings = readGameSettings();
-        const categorySelect = document.getElementById("categorySelect");
-        const devModeToggle = document.getElementById("devModeToggle");
+    function shuffleList(list) {
+        const items = list.slice();
 
-        if (settings.category && categorySelect.querySelector(`option[value="${settings.category}"]`)) {
-            categorySelect.value = settings.category;
+        for (let index = items.length - 1; index > 0; index -= 1) {
+            const swapIndex = Math.floor(Math.random() * (index + 1));
+            const temp = items[index];
+            items[index] = items[swapIndex];
+            items[swapIndex] = temp;
         }
 
+        return items;
+    }
+
+    function startMenuScene() {
+        const runner = document.getElementById("menuRunner");
+        const monster = document.getElementById("menuMonster");
+        const bubble = document.getElementById("menuRunnerBubble");
+        const birds = Array.from(document.querySelectorAll(".menu-bird"));
+        if (!(runner && monster && bubble)) {
+            return;
+        }
+
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const playerFrames = [
+            "assets/player_idle.png",
+            "assets/player_run.png"
+        ];
+        const birdFrames = [
+            "assets/birdsprite_wingsup.png",
+            "assets/birdsprite_wingdown.png"
+        ];
+
+        playerFrames.concat(birdFrames).concat(["assets/monster-lava.png", "assets/UI_title.png"]).forEach(function (src) {
+            const image = new Image();
+            image.src = src;
+        });
+
+        const chaseState = {
+            x: 28,
+            direction: 1,
+            speed: 162,
+            frameIndex: 1,
+            frameTimer: 0,
+            monsterX: 0,
+            lastTime: 0
+        };
+        const dialogueState = {
+            deck: [],
+            lastLine: "",
+            currentLine: MENU_DIALOGUE_LINES[0],
+            lastVisible: false
+        };
+
+        const birdStates = birds.map(function (bird, index) {
+            return {
+                el: bird,
+                x: index === 1 ? -160 : window.innerWidth + index * 160,
+                y: 38 + index * 26,
+                direction: index === 1 ? 1 : -1,
+                speed: 44 + index * 12,
+                frameIndex: 0,
+                frameTimer: index * 45,
+                bobSeed: index * 0.85
+            };
+        });
+
+        function getRunnerMaxX() {
+            return Math.max(28, window.innerWidth - (runner.offsetWidth || 140) - 28);
+        }
+
+        function nextMenuDialogueLine() {
+            if (!dialogueState.deck.length) {
+                dialogueState.deck = shuffleList(MENU_DIALOGUE_LINES);
+
+                if (
+                    dialogueState.lastLine &&
+                    dialogueState.deck.length > 1 &&
+                    dialogueState.deck[0] === dialogueState.lastLine
+                ) {
+                    const first = dialogueState.deck[0];
+                    dialogueState.deck[0] = dialogueState.deck[1];
+                    dialogueState.deck[1] = first;
+                }
+            }
+
+            const line = dialogueState.deck.shift();
+            dialogueState.lastLine = line;
+            dialogueState.currentLine = line;
+            bubble.textContent = line;
+            return line;
+        }
+
+        function positionStaticScene() {
+            runner.src = playerFrames[1];
+            runner.style.transform = "translate3d(28px, 0, 0) scaleX(1)";
+            monster.style.transform = "translate3d(0, 0, 0) scaleX(1)";
+            bubble.style.opacity = "1";
+            bubble.textContent = dialogueState.currentLine;
+            bubble.style.transform = "translate3d(-6px, -2px, 0) scale(1)";
+
+            birdStates.forEach(function (birdState, index) {
+                const staticX = 44 + index * 132;
+                const staticY = 34 + index * 18;
+                birdState.el.src = birdFrames[0];
+                birdState.el.style.transform = `translate3d(${staticX}px, ${staticY}px, 0) scaleX(${birdState.direction === 1 ? -1 : 1})`;
+            });
+        }
+
+        function frame(time) {
+            if (prefersReducedMotion) {
+                positionStaticScene();
+                return;
+            }
+
+            if (!chaseState.lastTime) {
+                chaseState.lastTime = time;
+            }
+
+            const delta = Math.min(40, time - chaseState.lastTime);
+            chaseState.lastTime = time;
+            chaseState.x += chaseState.direction * chaseState.speed * (delta / 1000);
+
+            const runnerMaxX = getRunnerMaxX();
+            if (chaseState.x <= 28) {
+                chaseState.x = 28;
+                chaseState.direction = 1;
+            } else if (chaseState.x >= runnerMaxX) {
+                chaseState.x = runnerMaxX;
+                chaseState.direction = -1;
+            }
+
+            chaseState.frameTimer += delta;
+            if (chaseState.frameTimer >= 110) {
+                chaseState.frameIndex = chaseState.frameIndex === 0 ? 1 : 0;
+                runner.src = playerFrames[chaseState.frameIndex];
+                chaseState.frameTimer = 0;
+            }
+
+            const desiredMonsterX = chaseState.x - (chaseState.direction === 1 ? 120 : -120);
+            const clampedMonsterTarget = Math.max(-16, Math.min(window.innerWidth - (monster.offsetWidth || 180) + 16, desiredMonsterX));
+            chaseState.monsterX += (clampedMonsterTarget - chaseState.monsterX) * Math.min(1, delta / 170);
+
+            const runnerBob = Math.sin(time / 120) * 3;
+            const monsterBob = Math.sin(time / 145 + 0.8) * 4;
+            runner.style.transform = `translate3d(${chaseState.x}px, ${runnerBob}px, 0) scaleX(${chaseState.direction === 1 ? 1 : -1})`;
+            monster.style.transform = `translate3d(${chaseState.monsterX}px, ${monsterBob}px, 0) scaleX(${chaseState.direction === 1 ? 1 : -1})`;
+
+            const bubbleCycle = 5200;
+            const bubbleWindow = 1650;
+            const bubblePhase = time % bubbleCycle;
+            const bubbleVisible = bubblePhase < bubbleWindow;
+            if (bubbleVisible && !dialogueState.lastVisible) {
+                nextMenuDialogueLine();
+            }
+
+            const runnerWidth = runner.offsetWidth || 140;
+            const bubbleWidth = bubble.offsetWidth || 180;
+            const bubbleX = Math.max(
+                12,
+                Math.min(
+                    window.innerWidth - bubbleWidth - 12,
+                    chaseState.x + (runnerWidth * 0.5) - (bubbleWidth * 0.5)
+                )
+            );
+            const bubbleLift = bubbleVisible ? Math.sin((bubblePhase / bubbleWindow) * Math.PI) * 7 : 0;
+            bubble.style.opacity = bubbleVisible ? "1" : "0";
+            bubble.style.transform = `translate3d(${bubbleX}px, ${runnerBob - 10 - bubbleLift}px, 0) scale(${bubbleVisible ? 1 : 0.92})`;
+            dialogueState.lastVisible = bubbleVisible;
+
+            birdStates.forEach(function (birdState, index) {
+                birdState.x += birdState.direction * birdState.speed * (delta / 1000);
+                birdState.frameTimer += delta;
+
+                if (birdState.frameTimer >= 140) {
+                    birdState.frameIndex = birdState.frameIndex === 0 ? 1 : 0;
+                    birdState.el.src = birdFrames[birdState.frameIndex];
+                    birdState.frameTimer = 0;
+                }
+
+                const birdWidth = birdState.el.offsetWidth || 84;
+                if (birdState.direction === -1 && birdState.x < -birdWidth - 36) {
+                    birdState.x = window.innerWidth + 50 + index * 90;
+                    birdState.y = 34 + index * 20;
+                } else if (birdState.direction === 1 && birdState.x > window.innerWidth + birdWidth + 36) {
+                    birdState.x = -birdWidth - 40 - index * 70;
+                    birdState.y = 64 + index * 18;
+                }
+
+                const birdBob = Math.sin(time / 280 + birdState.bobSeed) * 10;
+                const birdScaleX = birdState.direction === 1 ? -1 : 1;
+                birdState.el.style.transform = `translate3d(${birdState.x}px, ${birdState.y + birdBob}px, 0) scaleX(${birdScaleX})`;
+            });
+
+            window.requestAnimationFrame(frame);
+        }
+
+        [runner, monster].concat(birds).forEach(function (element) {
+            element.addEventListener("dragstart", function (event) {
+                event.preventDefault();
+            });
+        });
+
+        if (prefersReducedMotion) {
+            positionStaticScene();
+            return;
+        }
+
+        nextMenuDialogueLine();
+        window.requestAnimationFrame(frame);
+    }
+
+    (function initMenu() {
+        const settings = readGameSettings();
+        const devModeToggle = document.getElementById("devModeToggle");
+        const startGameButton = document.getElementById("startGameButton");
+        const howToPlayButton = document.getElementById("howToPlayButton");
+
+        startGameButton.addEventListener("click", launchGame);
+        howToPlayButton.addEventListener("click", showHowToPlay);
+        devModeToggle.addEventListener("change", saveGameSettings);
         devModeToggle.checked = !!settings.devMode;
+        startMenuScene();
     })();
     </script>
 </body>

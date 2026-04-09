@@ -73,12 +73,113 @@
         }
     ];
 
+    const PLAYER_DIALOGUE_LINES = [
+        "Easy jump!",
+        "Stay focused!",
+        "One step at a time.",
+        "Don't mess this up...",
+        "I'm flying now!",
+        "Too fast, too clean!",
+        "Lock in, let's go!",
+        "No mistakes!",
+        "That was close!",
+        "Keep it moving!",
+        "I'm not falling today!",
+        "Perfect timing!",
+        "Let's go again!",
+        "I won't choke this run!",
+        "Clean run, clean run!",
+        "Alright, here we go!",
+        "Just a little further!",
+        "I can do this all day!",
+        "Finish strong!",
+        "Alright... time to pass this test.",
+        "Did I study enough for this?",
+        "I definitely should've reviewed more...",
+        "Debit on the left... right?",
+        "Stay calm, I know this stuff.",
+        "Balance the sheet, balance the run.",
+        "No mistakes... no mistakes...",
+        "I can't fail this class.",
+        "Think... what did the professor say?",
+        "Assets equal liabilities... plus equity!",
+        "Okay, I remember this one!",
+        "Don't panic, just keep moving.",
+        "I need this grade.",
+        "Alright, focus up!",
+        "This is just like practice... I think.",
+        "Please let this be on the test.",
+        "I'm actually getting this!",
+        "Wait... that didn't look right.",
+        "One question at a time.",
+        "I'm passing this. No matter what."
+    ];
+    const PLAYER_DIALOGUE_VISIBLE_MS = 2500;
+    const PLAYER_DIALOGUE_NEAR_LAVA_BUFFER = 78;
+    const PLAYER_DIALOGUE_BUBBLE_OFFSET_Y = 28;
+    const PLAYER_DIALOGUE_BUBBLE_ANCHOR_X = 0.24;
+
     function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
     }
 
     function randomBetween(min, max) {
         return min + Math.random() * (max - min);
+    }
+
+    function shuffleList(list) {
+        const items = list.slice();
+
+        for (let index = items.length - 1; index > 0; index -= 1) {
+            const swapIndex = Math.floor(Math.random() * (index + 1));
+            const temp = items[index];
+            items[index] = items[swapIndex];
+            items[swapIndex] = temp;
+        }
+
+        return items;
+    }
+
+    function nextDialogueLine(dialogueState) {
+        if (!dialogueState.deck.length) {
+            dialogueState.deck = shuffleList(PLAYER_DIALOGUE_LINES);
+
+            if (
+                dialogueState.lastLine &&
+                dialogueState.deck.length > 1 &&
+                dialogueState.deck[0] === dialogueState.lastLine
+            ) {
+                const first = dialogueState.deck[0];
+                dialogueState.deck[0] = dialogueState.deck[1];
+                dialogueState.deck[1] = first;
+            }
+        }
+
+        const line = dialogueState.deck.shift();
+        dialogueState.lastLine = line;
+        return line;
+    }
+
+    function getDialogueVisibleMs() {
+        return PLAYER_DIALOGUE_VISIBLE_MS;
+    }
+
+    function getDialogueCooldownMs(reason) {
+        if (reason === "near-lava") {
+            return randomBetween(3800, 5600);
+        }
+
+        if (reason === "ambient") {
+            return randomBetween(3400, 5200);
+        }
+
+        return randomBetween(3000, 4600);
+    }
+
+    function getAmbientDialogueDelayMs(startSoon) {
+        return startSoon
+            ? randomBetween(1800, 3600)
+            : randomBetween(5200, 8600);
     }
 
     function imageReady(image) {
@@ -162,6 +263,8 @@
         }, root.settings || {});
         const dom = {
             hudText: document.getElementById("hudText"),
+            playerDialogueBubble: document.getElementById("playerDialogueBubble"),
+            playerDialogueText: document.getElementById("playerDialogueText"),
             devToolbar: document.getElementById("devToolbar"),
             devToolbarLabel: document.getElementById("devToolbarLabel"),
             devSkipButton: document.getElementById("devSkipButton"),
@@ -240,6 +343,16 @@
             activeAmbience: null,
             flyerSpawnTimer: 0,
             flyers: [],
+            dialogue: {
+                deck: [],
+                lastLine: "",
+                currentText: "",
+                visible: false,
+                visibleMs: 0,
+                cooldownMs: randomBetween(1200, 2400),
+                idleMs: randomBetween(1800, 3600),
+                nearLavaReady: true
+            },
             dev: {
                 enabled: !!settings.devMode,
                 skipQuestions: false,
@@ -312,6 +425,172 @@
             dom.soundToggleButton.textContent = state.isMuted ? "Muted" : "Sound";
             dom.soundToggleButton.setAttribute("aria-pressed", String(!state.isMuted));
             updateDevToolbar();
+        }
+
+        function hidePlayerDialogueBubble() {
+            if (!dom.playerDialogueBubble) {
+                return;
+            }
+
+            dom.playerDialogueBubble.classList.remove("is-visible");
+            dom.playerDialogueBubble.setAttribute("aria-hidden", "true");
+        }
+
+        function fitPlayerDialogueText(text) {
+            if (!dom.playerDialogueBubble || !dom.playerDialogueText) {
+                return;
+            }
+
+            const textNode = dom.playerDialogueText;
+            const isCompactViewport = window.innerWidth <= 720;
+            const baseFontSize = isCompactViewport ? 9 : 12;
+            const minFontSize = isCompactViewport ? 7 : 8;
+            let fontSize = baseFontSize;
+            let lineHeight = fontSize <= 9 ? 1.14 : 1.22;
+            let letterSpacing = fontSize <= 8 ? "0.01em" : "0.03em";
+
+            textNode.textContent = text;
+            textNode.style.fontSize = `${fontSize}px`;
+            textNode.style.lineHeight = String(lineHeight);
+            textNode.style.letterSpacing = letterSpacing;
+
+            while (
+                fontSize > minFontSize &&
+                (textNode.scrollHeight > textNode.clientHeight || textNode.scrollWidth > textNode.clientWidth)
+            ) {
+                fontSize -= 0.5;
+                lineHeight = fontSize <= 8 ? 1.08 : fontSize <= 9 ? 1.12 : 1.18;
+                letterSpacing = fontSize <= 8 ? "0.01em" : "0.02em";
+                textNode.style.fontSize = `${fontSize}px`;
+                textNode.style.lineHeight = String(lineHeight);
+                textNode.style.letterSpacing = letterSpacing;
+            }
+        }
+
+        function canShowPlayerDialogue() {
+            return !!(
+                dom.playerDialogueBubble &&
+                dom.playerDialogueText &&
+                player &&
+                state.assetsReady &&
+                !state.isPaused &&
+                !state.isQuestionActive &&
+                !state.isGameOver &&
+                !state.dialogue.visible &&
+                state.dialogue.cooldownMs <= 0
+            );
+        }
+
+        function resetPlayerDialogue(startSoon) {
+            state.dialogue.deck = [];
+            state.dialogue.lastLine = "";
+            state.dialogue.currentText = "";
+            state.dialogue.visible = false;
+            state.dialogue.visibleMs = 0;
+            state.dialogue.cooldownMs = 0;
+            state.dialogue.idleMs = getAmbientDialogueDelayMs(startSoon);
+            state.dialogue.nearLavaReady = true;
+
+            if (dom.playerDialogueText) {
+                dom.playerDialogueText.textContent = "";
+            }
+
+            hidePlayerDialogueBubble();
+        }
+
+        function showNextPlayerDialogue(reason) {
+            const line = nextDialogueLine(state.dialogue);
+            state.dialogue.currentText = line;
+            state.dialogue.visible = true;
+            state.dialogue.visibleMs = getDialogueVisibleMs();
+            state.dialogue.cooldownMs = getDialogueCooldownMs(reason);
+            state.dialogue.idleMs = getAmbientDialogueDelayMs(false);
+            state.dialogue.nearLavaReady = false;
+
+            if (dom.playerDialogueBubble) {
+                dom.playerDialogueBubble.classList.add("is-visible");
+                dom.playerDialogueBubble.setAttribute("aria-hidden", "false");
+            }
+
+            if (dom.playerDialogueText) {
+                fitPlayerDialogueText(line);
+            }
+        }
+
+        function tryTriggerPlayerDialogue(reason, chance) {
+            const triggerChance = typeof chance === "number" ? chance : 1;
+
+            if (!canShowPlayerDialogue() || Math.random() > triggerChance) {
+                return false;
+            }
+
+            showNextPlayerDialogue(reason);
+            return true;
+        }
+
+        function updatePlayerDialogue(deltaMs) {
+            if (!dom.playerDialogueBubble || !player) {
+                return;
+            }
+
+            if (state.isPaused || state.isQuestionActive || state.isGameOver) {
+                return;
+            }
+
+            state.dialogue.cooldownMs = Math.max(0, state.dialogue.cooldownMs - deltaMs);
+
+            if (state.dialogue.visible) {
+                state.dialogue.visibleMs -= deltaMs;
+
+                if (state.dialogue.visibleMs <= 0) {
+                    state.dialogue.visible = false;
+                    hidePlayerDialogueBubble();
+                }
+                return;
+            }
+
+            state.dialogue.idleMs -= deltaMs;
+            if (state.dialogue.idleMs <= 0 && state.dialogue.cooldownMs <= 0) {
+                showNextPlayerDialogue("ambient");
+            }
+        }
+
+        function renderPlayerDialogueBubble() {
+            const bubble = dom.playerDialogueBubble;
+            if (
+                !bubble ||
+                !player ||
+                !state.assetsReady ||
+                !state.dialogue.visible ||
+                !state.dialogue.currentText ||
+                state.isPaused ||
+                state.isQuestionActive ||
+                state.isGameOver
+            ) {
+                hidePlayerDialogueBubble();
+                return;
+            }
+
+            const screenX = player.x - state.cameraX;
+            const screenY = player.y;
+            const bounds = player.getRenderBounds(screenX, screenY);
+            const bubbleWidth = bubble.offsetWidth || 220;
+            const bubbleHeight = bubble.offsetHeight || 146;
+            const anchorX = bounds.x + (bounds.width * 0.5);
+            const bubbleX = clamp(
+                anchorX - (bubbleWidth * PLAYER_DIALOGUE_BUBBLE_ANCHOR_X),
+                12,
+                canvas.width - bubbleWidth - 12
+            );
+            const bubbleY = clamp(
+                bounds.y - bubbleHeight - PLAYER_DIALOGUE_BUBBLE_OFFSET_Y,
+                12,
+                canvas.height - bubbleHeight - 24
+            );
+
+            bubble.classList.add("is-visible");
+            bubble.setAttribute("aria-hidden", "false");
+            bubble.style.transform = `translate3d(${Math.round(bubbleX)}px, ${Math.round(bubbleY)}px, 0)`;
         }
 
         function updateDevToolbar() {
@@ -704,6 +983,7 @@
             state.dev.levelOverrideIndex = null;
 
             clearInputState();
+            resetPlayerDialogue(true);
             hideAllOverlays();
             dom.cornerControls.classList.remove("hidden");
             dom.summaryInitials.value = "";
@@ -1205,6 +1485,8 @@
         }
 
         function collectCoins() {
+            let collectedCount = 0;
+
             platformManager.getCoins().forEach(function (coin) {
                 if (coin.collected) {
                     return;
@@ -1217,9 +1499,12 @@
                 if (withinX && withinY) {
                     coin.collected = true;
                     state.coinsCollected += 1;
+                    collectedCount += 1;
                     playCoinSound();
                 }
             });
+
+            return collectedCount;
         }
 
         function placePlayerOnPlatform(platform, preferredOffsetX) {
@@ -1319,6 +1604,8 @@
         function endRun() {
             state.isGameOver = true;
             state.isQuestionActive = false;
+            state.dialogue.visible = false;
+            hidePlayerDialogueBubble();
             pauseAllTracks();
             showSummary();
         }
@@ -1366,6 +1653,8 @@
 
             const respawnTargetX = player.centerX;
             state.isQuestionActive = true;
+            state.dialogue.visible = false;
+            hidePlayerDialogueBubble();
             setPlayerLavaState(true);
             clearInputState();
             dom.cornerControls.classList.add("hidden");
@@ -1412,6 +1701,7 @@
 
             player.handleInput(input, deltaMs);
             state.jumpQueued = false;
+            const jumpedThisFrame = wasGrounded && !player.isOnGround && player.dy < 0;
             player.x = Math.max(-20, player.x);
             player.applyPhysics(canvas.height, deltaMs);
 
@@ -1428,7 +1718,27 @@
             }
 
             updateWorldMetrics();
-            collectCoins();
+            const collectedCoins = collectCoins();
+
+            if (jumpedThisFrame) {
+                tryTriggerPlayerDialogue("jump", 0.36);
+            }
+
+            if (collectedCoins > 0) {
+                tryTriggerPlayerDialogue("coin", collectedCoins > 1 ? 0.72 : 0.52);
+            }
+
+            const isNearLava = !player.isOnGround && player.bottomY >= getLavaSurfaceY() - PLAYER_DIALOGUE_NEAR_LAVA_BUFFER;
+            if (isNearLava) {
+                if (state.dialogue.nearLavaReady) {
+                    if (!tryTriggerPlayerDialogue("near-lava", 0.82)) {
+                        state.dialogue.nearLavaReady = false;
+                    }
+                }
+            } else {
+                state.dialogue.nearLavaReady = true;
+            }
+
             updateAmbient(deltaMs);
 
             if (player.bottomY >= getLavaSurfaceY() + 4) {
@@ -1444,6 +1754,7 @@
             const levelInfo = getCurrentLevelInfo(state.distanceMeters);
             requestMusic(levelInfo.config.music);
             updateHud();
+            updatePlayerDialogue(deltaMs);
         }
 
         function draw(timeMs) {
@@ -1485,6 +1796,7 @@
 
             updateMusic(deltaMs);
             draw(timeMs);
+            renderPlayerDialogueBubble();
             state.rafId = window.requestAnimationFrame(frame);
         }
 
