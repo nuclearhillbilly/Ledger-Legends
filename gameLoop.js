@@ -199,69 +199,24 @@
     }
 
     function getViewportSize() {
-        const sharedMetrics = window.LedgerLegends && typeof window.LedgerLegends.getViewportMetrics === "function"
-            ? window.LedgerLegends.getViewportMetrics()
-            : null;
-        if (sharedMetrics) {
-            return sharedMetrics;
-        }
-
         const viewport = window.visualViewport;
         if (viewport && viewport.width > 0 && viewport.height > 0) {
-            const width = Math.max(320, Math.round(viewport.width));
-            const height = Math.max(320, Math.round(viewport.height));
-            const scaleX = width / 1920;
-            const scaleY = height / 1080;
-            const scale = Math.min(scaleX, scaleY);
             return {
-                width: width,
-                height: height,
-                scaleX: scaleX,
-                scaleY: scaleY,
-                scale: scale,
-                uiScale: clamp(scale * 3.15, 0.74, 1),
-                overlayScale: clamp(scale * 3.35, 0.72, 1),
-                touchScale: clamp(scale * 3.25, 0.76, 1)
+                width: Math.max(320, Math.round(viewport.width)),
+                height: Math.max(320, Math.round(viewport.height))
             };
         }
 
-        const width = Math.max(320, Math.round(window.innerWidth));
-        const height = Math.max(320, Math.round(window.innerHeight));
-        const scaleX = width / 1920;
-        const scaleY = height / 1080;
-        const scale = Math.min(scaleX, scaleY);
         return {
-            width: width,
-            height: height,
-            scaleX: scaleX,
-            scaleY: scaleY,
-            scale: scale,
-            uiScale: clamp(scale * 3.15, 0.74, 1),
-            overlayScale: clamp(scale * 3.35, 0.72, 1),
-            touchScale: clamp(scale * 3.25, 0.76, 1)
+            width: Math.max(320, Math.round(window.innerWidth)),
+            height: Math.max(320, Math.round(window.innerHeight))
         };
     }
 
     function applyViewportSize() {
-        const sharedApply = window.LedgerLegends && typeof window.LedgerLegends.applyResponsiveMetrics === "function"
-            ? window.LedgerLegends.applyResponsiveMetrics
-            : null;
-        if (sharedApply) {
-            return sharedApply();
-        }
-
         const viewport = getViewportSize();
         document.documentElement.style.setProperty("--viewport-width", `${viewport.width}px`);
         document.documentElement.style.setProperty("--viewport-height", `${viewport.height}px`);
-        document.documentElement.style.setProperty("--ui-scale-x", viewport.scaleX.toFixed(4));
-        document.documentElement.style.setProperty("--ui-scale-y", viewport.scaleY.toFixed(4));
-        document.documentElement.style.setProperty("--ui-scale-raw", viewport.scale.toFixed(4));
-        document.documentElement.style.setProperty("--ui-scale", viewport.uiScale.toFixed(4));
-        document.documentElement.style.setProperty("--overlay-scale", viewport.overlayScale.toFixed(4));
-        document.documentElement.style.setProperty("--touch-ui-scale", viewport.touchScale.toFixed(4));
-        document.documentElement.style.setProperty("--ui-edge-padding", `${Math.round(10 + (10 * viewport.uiScale))}px`);
-        document.documentElement.style.setProperty("--ui-corner-margin", `${Math.round(10 + (12 * viewport.uiScale))}px`);
-        document.documentElement.style.setProperty("--ui-overlay-padding", `${Math.round(14 + (16 * viewport.overlayScale))}px`);
         return viewport;
     }
 
@@ -2536,7 +2491,6 @@
             window.addEventListener("resize", resizeCanvas);
             if (window.visualViewport) {
                 window.visualViewport.addEventListener("resize", resizeCanvas);
-                window.visualViewport.addEventListener("scroll", resizeCanvas);
             }
             window.addEventListener("blur", function () {
                 if (!state.isGameOver && !state.isQuestionActive) {

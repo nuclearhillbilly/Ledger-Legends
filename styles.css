@@ -3,15 +3,6 @@
 :root {
     --viewport-width: 100vw;
     --viewport-height: 100dvh;
-    --ui-scale-x: 1;
-    --ui-scale-y: 1;
-    --ui-scale-raw: 1;
-    --ui-scale: 1;
-    --overlay-scale: 1;
-    --touch-ui-scale: 1;
-    --ui-edge-padding: 20px;
-    --ui-corner-margin: 22px;
-    --ui-overlay-padding: 24px;
 }
 
 * {
@@ -990,9 +981,9 @@ canvas {
 
 .mobile-controls {
     position: fixed;
-    left: max(var(--ui-edge-padding), calc(env(safe-area-inset-left, 0px) + var(--ui-edge-padding)));
-    right: max(var(--ui-edge-padding), calc(env(safe-area-inset-right, 0px) + var(--ui-edge-padding)));
-    bottom: max(calc(var(--ui-edge-padding) + 2px), calc(env(safe-area-inset-bottom, 0px) + var(--ui-edge-padding) + 2px));
+    left: max(12px, env(safe-area-inset-left, 0px) + 12px);
+    right: max(12px, env(safe-area-inset-right, 0px) + 12px);
+    bottom: max(14px, env(safe-area-inset-bottom, 0px) + 14px);
     z-index: 8;
     display: none;
     align-items: flex-end;
@@ -1002,20 +993,20 @@ canvas {
 
 .mobile-move-cluster {
     display: flex;
-    gap: calc(8px + 4px * var(--touch-ui-scale));
+    gap: 12px;
     pointer-events: none;
 }
 
 .touch-button {
-    min-width: calc(60px + 18px * var(--touch-ui-scale));
-    height: calc(60px + 18px * var(--touch-ui-scale));
-    padding: 0 calc(10px + 6px * var(--touch-ui-scale));
-    border: calc(2px + 1px * var(--touch-ui-scale)) solid rgba(255, 228, 142, 0.72);
-    border-radius: calc(18px + 6px * var(--touch-ui-scale));
+    min-width: 78px;
+    height: 78px;
+    padding: 0 16px;
+    border: 3px solid rgba(255, 228, 142, 0.72);
+    border-radius: 24px;
     background: rgba(23, 17, 31, 0.76);
     color: #fff3c2;
     font-family: "Press Start 2P", "Lucida Console", monospace;
-    font-size: calc(0.46rem + 0.16rem * var(--touch-ui-scale));
+    font-size: 0.62rem;
     letter-spacing: 0.08em;
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.1),
@@ -1027,7 +1018,7 @@ canvas {
 }
 
 .touch-button-jump {
-    min-width: calc(80px + 22px * var(--touch-ui-scale));
+    min-width: 102px;
 }
 
 .touch-button.is-active {
@@ -1038,23 +1029,23 @@ canvas {
 
 .hud {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + var(--ui-corner-margin) - 2px);
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 4;
-    width: min(calc(var(--viewport-width) - (2 * var(--ui-edge-padding))), calc(460px + 260px * var(--ui-scale)));
+    width: min(92vw, 720px);
 }
 
 .hud-line {
     width: 100%;
-    padding: calc(10px + 2px * var(--ui-scale)) calc(14px + 6px * var(--ui-scale));
-    border-radius: calc(12px + 2px * var(--ui-scale));
+    padding: 12px 20px;
+    border-radius: 14px;
     background: rgba(10, 14, 28, 0.82);
     border: 1px solid rgba(251, 191, 36, 0.24);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
     backdrop-filter: blur(10px);
     color: #fff7ed;
-    font-size: calc(0.78rem + 0.28rem * var(--ui-scale));
+    font-size: clamp(1rem, 1.3vw, 1.14rem);
     letter-spacing: 0.03em;
     white-space: nowrap;
     text-align: center;
@@ -1062,23 +1053,23 @@ canvas {
 
 .corner-controls {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + var(--ui-corner-margin));
-    right: calc(env(safe-area-inset-right, 0px) + var(--ui-corner-margin));
+    top: calc(env(safe-area-inset-top, 0px) + 18px);
+    right: calc(env(safe-area-inset-right, 0px) + 18px);
     z-index: 5;
     display: flex;
-    gap: calc(6px + 4px * var(--ui-scale));
+    gap: 10px;
 }
 
 .corner-button {
-    min-width: calc(52px + 18px * var(--ui-scale));
-    height: calc(30px + 8px * var(--ui-scale));
-    padding: 0 calc(8px + 6px * var(--ui-scale));
+    min-width: 70px;
+    height: 38px;
+    padding: 0 14px;
     border: 1px solid rgba(255, 247, 237, 0.18);
     border-radius: 999px;
     background: rgba(10, 14, 28, 0.46);
     color: #fff7ed;
     font: inherit;
-    font-size: calc(0.62rem + 0.2rem * var(--ui-scale));
+    font-size: 0.82rem;
     letter-spacing: 0.02em;
     cursor: pointer;
     opacity: 0.78;
@@ -1156,26 +1147,24 @@ canvas {
     z-index: 9;
     display: grid;
     place-items: center;
-    padding: var(--ui-overlay-padding);
+    padding: 24px;
     background: rgba(5, 8, 22, 0.72);
     backdrop-filter: blur(10px);
 }
 
 .overlay-card {
-    width: min(calc(400px + 580px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
-    max-height: calc(var(--viewport-height) - (2 * var(--ui-overlay-padding)));
-    padding: calc(18px + 14px * var(--overlay-scale));
-    border-radius: calc(18px + 10px * var(--overlay-scale));
+    width: min(980px, 100%);
+    padding: 32px;
+    border-radius: 28px;
     background:
         radial-gradient(circle at top, rgba(249, 115, 22, 0.18), transparent 34%),
         rgba(13, 18, 33, 0.94);
     border: 1px solid rgba(251, 191, 36, 0.26);
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
-    overflow: auto;
 }
 
 .compact-card {
-    width: min(calc(340px + 240px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
+    width: min(580px, 100%);
 }
 
 .scroll-surface {
@@ -1187,21 +1176,20 @@ canvas {
 
 .pause-card {
     position: relative;
-    width: min(calc(320px + 180px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))), calc(var(--viewport-height) * 0.72));
+    width: min(80vw, 62vh, 500px);
     aspect-ratio: 1 / 1;
     padding: 0;
     text-align: center;
-    overflow: visible;
 }
 
 .pause-scroll-content {
     position: absolute;
-    inset: 24.5% 18.5% 20.5% 18.5%;
+    inset: 24% 19% 21% 19%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: calc(4px + 2px * var(--overlay-scale));
+    gap: 6px;
 }
 
 .pause-card h2,
@@ -1268,8 +1256,8 @@ canvas {
 
 .gameover-image {
     display: block;
-    width: min(calc(220px + 240px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
-    margin: 0 auto calc(12px + 6px * var(--overlay-scale));
+    width: min(460px, 80vw);
+    margin: 0 auto 18px;
     animation: pulseGameOver 1.8s ease-in-out infinite;
 }
 
@@ -1296,27 +1284,23 @@ canvas {
 .overlay-card p {
     color: #ffedd5;
     line-height: 1.65;
-    font-size: calc(0.78rem + 0.18rem * var(--overlay-scale));
 }
 
 .scoreboard-card {
     text-align: center;
-    display: grid;
-    gap: calc(8px + 4px * var(--overlay-scale));
-    align-content: start;
 }
 
 .scoreboard-current {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: calc(8px + 4px * var(--overlay-scale));
-    margin: calc(14px + 6px * var(--overlay-scale)) 0 calc(12px + 4px * var(--overlay-scale));
+    gap: 12px;
+    margin: 20px 0 16px;
 }
 
 .scoreboard-current p {
     margin: 0;
-    padding: calc(10px + 4px * var(--overlay-scale));
-    border-radius: calc(12px + 4px * var(--overlay-scale));
+    padding: 14px;
+    border-radius: 16px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -1324,26 +1308,25 @@ canvas {
 .initials-row {
     display: flex;
     align-items: center;
-    gap: calc(8px + 4px * var(--overlay-scale));
+    gap: 12px;
     justify-content: center;
-    margin: calc(14px + 4px * var(--overlay-scale)) 0;
+    margin: 18px 0;
 }
 
 .initials-row input {
-    width: calc(76px + 20px * var(--overlay-scale));
-    padding: calc(8px + 4px * var(--overlay-scale)) calc(10px + 4px * var(--overlay-scale));
-    border-radius: calc(8px + 4px * var(--overlay-scale));
+    width: 96px;
+    padding: 12px 14px;
+    border-radius: 12px;
     border: 1px solid rgba(255, 247, 237, 0.18);
     background: rgba(255, 255, 255, 0.06);
     color: #fff7ed;
     text-transform: uppercase;
     text-align: center;
-    font-size: calc(0.78rem + 0.08rem * var(--overlay-scale));
 }
 
 .scoreboard-table-wrap {
     overflow: auto;
-    margin: calc(12px + 4px * var(--overlay-scale)) 0 calc(14px + 8px * var(--overlay-scale));
+    margin: 16px 0 22px;
 }
 
 .scoreboard-table {
@@ -1353,10 +1336,9 @@ canvas {
 
 .scoreboard-table th,
 .scoreboard-table td {
-    padding: calc(8px + 4px * var(--overlay-scale)) calc(6px + 4px * var(--overlay-scale));
+    padding: 12px 10px;
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    font-size: calc(0.68rem + 0.18rem * var(--overlay-scale));
 }
 
 .scoreboard-table th {
@@ -1370,7 +1352,7 @@ canvas {
 .scoreboard-actions,
 .overlay-actions {
     display: flex;
-    gap: calc(8px + 4px * var(--overlay-scale));
+    gap: 12px;
     justify-content: center;
     flex-wrap: wrap;
 }
@@ -1702,8 +1684,24 @@ canvas {
         align-items: stretch;
     }
 
+    .game-overlay {
+        padding: 16px;
+    }
+
+    .overlay-card {
+        width: min(92vw, 560px);
+        max-height: calc(var(--viewport-height) - 32px);
+        padding: 22px 16px;
+        border-radius: 22px;
+        overflow-y: auto;
+    }
+
+    .compact-card {
+        width: min(92vw, 520px);
+    }
+
     .pause-card {
-        width: min(88vw, 58vh, 460px);
+        width: min(90vw, 58vh, 460px);
     }
 
     .dev-toolbar {
@@ -1714,6 +1712,36 @@ canvas {
     .pause-scroll-content {
         inset: 24.5% 18% 21% 18%;
         gap: 5px;
+    }
+
+    .gameover-image {
+        width: min(236px, 62vw);
+        margin-bottom: 14px;
+    }
+
+    .overlay-card p {
+        font-size: 0.88rem;
+        line-height: 1.56;
+    }
+
+    .scoreboard-card {
+        gap: 10px;
+    }
+
+    .scoreboard-table th,
+    .scoreboard-table td {
+        padding: 10px 8px;
+        font-size: 0.76rem;
+    }
+
+    .overlay-actions,
+    .scoreboard-actions {
+        gap: 10px;
+    }
+
+    .overlay-actions > *,
+    .scoreboard-actions > * {
+        width: min(100%, 240px);
     }
 
     .question-box {
@@ -1863,6 +1891,68 @@ canvas {
         min-width: 84px;
     }
 
+    .game-overlay {
+        padding: 12px;
+    }
+
+    .overlay-card {
+        width: min(96vw, 420px);
+        max-height: calc(var(--viewport-height) - 24px);
+        padding: 18px 14px;
+        border-radius: 18px;
+    }
+
+    .compact-card {
+        width: min(96vw, 390px);
+    }
+
+    .pause-card {
+        width: min(94vw, 400px);
+    }
+
+    .pause-scroll-content {
+        inset: 24.5% 17.5% 20.5% 17.5%;
+        gap: 4px;
+    }
+
+    .pause-card .primary-button,
+    .pause-card .secondary-button,
+    .pause-card .secondary-link {
+        min-height: 32px;
+        font-size: 0.98rem;
+    }
+
+    .gameover-image {
+        width: min(208px, 66vw);
+        margin-bottom: 12px;
+    }
+
+    .overlay-card p {
+        font-size: 0.8rem;
+        line-height: 1.48;
+    }
+
+    .scoreboard-table th,
+    .scoreboard-table td {
+        padding: 8px 6px;
+        font-size: 0.68rem;
+    }
+
+    .initials-row input {
+        width: 84px;
+        padding: 10px 12px;
+    }
+
+    .overlay-actions,
+    .scoreboard-actions {
+        gap: 8px;
+    }
+
+    .overlay-actions > *,
+    .scoreboard-actions > * {
+        width: 100%;
+    }
+
     .question-box {
         width: min(98vw, 92dvh, 430px);
     }
@@ -1956,73 +2046,6 @@ canvas {
     .menu-runner-sprite {
         width: clamp(88px, 14vw, 120px);
         bottom: 4px;
-    }
-}
-
-@media (max-width: 900px), (pointer: coarse) {
-    .corner-controls {
-        top: calc(env(safe-area-inset-top, 0px) + var(--ui-corner-margin));
-        right: calc(env(safe-area-inset-right, 0px) + var(--ui-corner-margin));
-        gap: calc(6px + 4px * var(--ui-scale));
-    }
-
-    .corner-button {
-        min-width: calc(52px + 18px * var(--ui-scale));
-        height: calc(30px + 8px * var(--ui-scale));
-        padding: 0 calc(8px + 6px * var(--ui-scale));
-        font-size: calc(0.62rem + 0.2rem * var(--ui-scale));
-    }
-
-    .mobile-controls {
-        left: max(var(--ui-edge-padding), calc(env(safe-area-inset-left, 0px) + var(--ui-edge-padding)));
-        right: max(var(--ui-edge-padding), calc(env(safe-area-inset-right, 0px) + var(--ui-edge-padding)));
-        bottom: max(calc(var(--ui-edge-padding) + 2px), calc(env(safe-area-inset-bottom, 0px) + var(--ui-edge-padding) + 2px));
-    }
-
-    .mobile-move-cluster {
-        gap: calc(8px + 4px * var(--touch-ui-scale));
-    }
-
-    .touch-button {
-        min-width: calc(60px + 18px * var(--touch-ui-scale));
-        height: calc(60px + 18px * var(--touch-ui-scale));
-        padding: 0 calc(10px + 6px * var(--touch-ui-scale));
-        border-radius: calc(18px + 6px * var(--touch-ui-scale));
-        font-size: calc(0.46rem + 0.16rem * var(--touch-ui-scale));
-    }
-
-    .touch-button-jump {
-        min-width: calc(80px + 22px * var(--touch-ui-scale));
-    }
-
-    .game-overlay {
-        padding: var(--ui-overlay-padding);
-    }
-
-    .overlay-card {
-        width: min(calc(360px + 500px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
-        max-height: calc(var(--viewport-height) - (2 * var(--ui-overlay-padding)));
-    }
-
-    .compact-card {
-        width: min(calc(320px + 220px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
-    }
-
-    .pause-card {
-        width: min(calc(300px + 160px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))), calc(var(--viewport-height) * 0.7));
-    }
-
-    .scoreboard-card {
-        gap: calc(8px + 4px * var(--overlay-scale));
-    }
-
-    .scoreboard-current {
-        grid-template-columns: 1fr;
-    }
-
-    .initials-row {
-        flex-direction: column;
-        align-items: stretch;
     }
 }
 
