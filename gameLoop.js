@@ -114,12 +114,17 @@
         "One question at a time.",
         "I'm passing this. No matter what."
     ];
-    const PLAYER_DIALOGUE_VISIBLE_MS = 2500;
+    const PLAYER_DIALOGUE_VISIBLE_MS = 4000;
     const PLAYER_DIALOGUE_NEAR_LAVA_BUFFER = 78;
-    const PLAYER_DIALOGUE_BUBBLE_OFFSET_Y = 4;
-    const PLAYER_DIALOGUE_BUBBLE_TAIL_X = 0.2;
-    const PLAYER_DIALOGUE_HEAD_ANCHOR_RIGHT = 0.4;
-    const PLAYER_DIALOGUE_HEAD_ANCHOR_LEFT = 0.6;
+    const PLAYER_DIALOGUE_FACE_ANCHOR_RIGHT = 0.58;
+    const PLAYER_DIALOGUE_FACE_ANCHOR_LEFT = 0.42;
+    const PLAYER_DIALOGUE_FACE_ANCHOR_Y = 0.36;
+    const PLAYER_DIALOGUE_BUBBLE_TIP_X = 0.17;
+    const PLAYER_DIALOGUE_BUBBLE_TIP_Y = 0.74;
+    const PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_X_RIGHT = -20;
+    const PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_X_LEFT = -16;
+    const PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_Y = -4;
+    const PLAYER_DIALOGUE_BUBBLE_TOUCH_SHIFT_X = -10;
     const LAVA_MONSTER_MIN_WIDTH = 96;
     const LAVA_MONSTER_MAX_WIDTH = 132;
     const LAVA_MONSTER_CHASE_GAP_MIN = 116;
@@ -194,24 +199,69 @@
     }
 
     function getViewportSize() {
+        const sharedMetrics = window.LedgerLegends && typeof window.LedgerLegends.getViewportMetrics === "function"
+            ? window.LedgerLegends.getViewportMetrics()
+            : null;
+        if (sharedMetrics) {
+            return sharedMetrics;
+        }
+
         const viewport = window.visualViewport;
         if (viewport && viewport.width > 0 && viewport.height > 0) {
+            const width = Math.max(320, Math.round(viewport.width));
+            const height = Math.max(320, Math.round(viewport.height));
+            const scaleX = width / 1920;
+            const scaleY = height / 1080;
+            const scale = Math.min(scaleX, scaleY);
             return {
-                width: Math.max(320, Math.round(viewport.width)),
-                height: Math.max(320, Math.round(viewport.height))
+                width: width,
+                height: height,
+                scaleX: scaleX,
+                scaleY: scaleY,
+                scale: scale,
+                uiScale: clamp(scale * 3.15, 0.74, 1),
+                overlayScale: clamp(scale * 3.35, 0.72, 1),
+                touchScale: clamp(scale * 3.25, 0.76, 1)
             };
         }
 
+        const width = Math.max(320, Math.round(window.innerWidth));
+        const height = Math.max(320, Math.round(window.innerHeight));
+        const scaleX = width / 1920;
+        const scaleY = height / 1080;
+        const scale = Math.min(scaleX, scaleY);
         return {
-            width: Math.max(320, Math.round(window.innerWidth)),
-            height: Math.max(320, Math.round(window.innerHeight))
+            width: width,
+            height: height,
+            scaleX: scaleX,
+            scaleY: scaleY,
+            scale: scale,
+            uiScale: clamp(scale * 3.15, 0.74, 1),
+            overlayScale: clamp(scale * 3.35, 0.72, 1),
+            touchScale: clamp(scale * 3.25, 0.76, 1)
         };
     }
 
     function applyViewportSize() {
+        const sharedApply = window.LedgerLegends && typeof window.LedgerLegends.applyResponsiveMetrics === "function"
+            ? window.LedgerLegends.applyResponsiveMetrics
+            : null;
+        if (sharedApply) {
+            return sharedApply();
+        }
+
         const viewport = getViewportSize();
         document.documentElement.style.setProperty("--viewport-width", `${viewport.width}px`);
         document.documentElement.style.setProperty("--viewport-height", `${viewport.height}px`);
+        document.documentElement.style.setProperty("--ui-scale-x", viewport.scaleX.toFixed(4));
+        document.documentElement.style.setProperty("--ui-scale-y", viewport.scaleY.toFixed(4));
+        document.documentElement.style.setProperty("--ui-scale-raw", viewport.scale.toFixed(4));
+        document.documentElement.style.setProperty("--ui-scale", viewport.uiScale.toFixed(4));
+        document.documentElement.style.setProperty("--overlay-scale", viewport.overlayScale.toFixed(4));
+        document.documentElement.style.setProperty("--touch-ui-scale", viewport.touchScale.toFixed(4));
+        document.documentElement.style.setProperty("--ui-edge-padding", `${Math.round(10 + (10 * viewport.uiScale))}px`);
+        document.documentElement.style.setProperty("--ui-corner-margin", `${Math.round(10 + (12 * viewport.uiScale))}px`);
+        document.documentElement.style.setProperty("--ui-overlay-padding", `${Math.round(14 + (16 * viewport.overlayScale))}px`);
         return viewport;
     }
 
@@ -395,6 +445,7 @@
                 currentText: "",
                 visible: false,
                 visibleMs: 0,
+                visibleUntilMs: 0,
                 cooldownMs: randomBetween(1200, 2400),
                 idleMs: randomBetween(1800, 3600),
                 nearLavaReady: true
@@ -490,7 +541,7 @@
             const textNode = dom.playerDialogueText;
             const isCompactViewport = window.innerWidth <= 720;
             const baseFontSize = isCompactViewport ? 6.2 : 7.8;
-            const minFontSize = isCompactViewport ? 4.35 : 5.1;
+            const minFontSize = isCompactViewport ? 4.05 : 4.8;
             let fontSize = baseFontSize;
             let lineHeight = fontSize <= 5.2 ? 0.98 : fontSize <= 6.5 ? 1.01 : 1.05;
             let letterSpacing = fontSize <= 5.2 ? "0" : fontSize <= 6.2 ? "0.003em" : "0.006em";
@@ -519,7 +570,7 @@
             const heightScale = textNode.scrollHeight > textNode.clientHeight
                 ? textNode.clientHeight / textNode.scrollHeight
                 : 1;
-            const contentScale = Math.max(0.7, Math.min(1, widthScale, heightScale));
+            const contentScale = Math.max(0.62, Math.min(1, widthScale, heightScale));
             textNode.style.transform = contentScale < 0.999 ? `scale(${contentScale})` : "scale(1)";
         }
 
@@ -543,6 +594,7 @@
             state.dialogue.currentText = "";
             state.dialogue.visible = false;
             state.dialogue.visibleMs = 0;
+            state.dialogue.visibleUntilMs = 0;
             state.dialogue.cooldownMs = 0;
             state.dialogue.idleMs = getAmbientDialogueDelayMs(startSoon);
             state.dialogue.nearLavaReady = true;
@@ -559,6 +611,7 @@
             state.dialogue.currentText = line;
             state.dialogue.visible = true;
             state.dialogue.visibleMs = getDialogueVisibleMs();
+            state.dialogue.visibleUntilMs = state.sceneTimeMs + getDialogueVisibleMs();
             state.dialogue.cooldownMs = getDialogueCooldownMs(reason);
             state.dialogue.idleMs = getAmbientDialogueDelayMs(false);
             state.dialogue.nearLavaReady = false;
@@ -596,10 +649,11 @@
             state.dialogue.cooldownMs = Math.max(0, state.dialogue.cooldownMs - deltaMs);
 
             if (state.dialogue.visible) {
-                state.dialogue.visibleMs -= deltaMs;
+                state.dialogue.visibleMs = Math.max(0, state.dialogue.visibleUntilMs - state.sceneTimeMs);
 
-                if (state.dialogue.visibleMs <= 0) {
+                if (state.dialogue.visibleUntilMs <= state.sceneTimeMs) {
                     state.dialogue.visible = false;
+                    state.dialogue.visibleUntilMs = 0;
                     hidePlayerDialogueBubble();
                 }
                 return;
@@ -632,17 +686,22 @@
             const bounds = player.getRenderBounds(screenX, screenY);
             const bubbleWidth = bubble.offsetWidth || 220;
             const bubbleHeight = bubble.offsetHeight || 146;
-            const headAnchorRatio = player.facing === -1
-                ? PLAYER_DIALOGUE_HEAD_ANCHOR_LEFT
-                : PLAYER_DIALOGUE_HEAD_ANCHOR_RIGHT;
-            const anchorX = bounds.x + (bounds.width * headAnchorRatio);
+            const faceAnchorRatio = player.facing === -1
+                ? PLAYER_DIALOGUE_FACE_ANCHOR_LEFT
+                : PLAYER_DIALOGUE_FACE_ANCHOR_RIGHT;
+            const anchorOffsetX = player.facing === -1
+                ? PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_X_LEFT
+                : PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_X_RIGHT;
+            const touchShiftX = useTouchUILayout() ? PLAYER_DIALOGUE_BUBBLE_TOUCH_SHIFT_X : 0;
+            const faceX = bounds.x + (bounds.width * faceAnchorRatio);
+            const faceY = bounds.y + (bounds.height * PLAYER_DIALOGUE_FACE_ANCHOR_Y);
             const bubbleX = clamp(
-                anchorX - (bubbleWidth * PLAYER_DIALOGUE_BUBBLE_TAIL_X),
+                faceX - (bubbleWidth * PLAYER_DIALOGUE_BUBBLE_TIP_X) + anchorOffsetX + touchShiftX,
                 12,
                 canvas.width - bubbleWidth - 12
             );
             const bubbleY = clamp(
-                bounds.y - bubbleHeight - PLAYER_DIALOGUE_BUBBLE_OFFSET_Y,
+                faceY - (bubbleHeight * PLAYER_DIALOGUE_BUBBLE_TIP_Y) + PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_Y,
                 12,
                 canvas.height - bubbleHeight - 24
             );
@@ -2117,6 +2176,7 @@
             state.isQuestionActive = false;
             state.arrowHazards = [];
             state.dialogue.visible = false;
+            state.dialogue.visibleUntilMs = 0;
             hidePlayerDialogueBubble();
             updateMobileControlsVisibility();
             pauseAllTracks();
@@ -2188,6 +2248,7 @@
             state.arrowHazards = [];
             resetArrowHazards(false);
             state.dialogue.visible = false;
+            state.dialogue.visibleUntilMs = 0;
             hidePlayerDialogueBubble();
             setPlayerLavaState(!!config.sinkPlayer);
             clearInputState();

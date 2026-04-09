@@ -3,6 +3,15 @@
 :root {
     --viewport-width: 100vw;
     --viewport-height: 100dvh;
+    --ui-scale-x: 1;
+    --ui-scale-y: 1;
+    --ui-scale-raw: 1;
+    --ui-scale: 1;
+    --overlay-scale: 1;
+    --touch-ui-scale: 1;
+    --ui-edge-padding: 20px;
+    --ui-corner-margin: 22px;
+    --ui-overlay-padding: 24px;
 }
 
 * {
@@ -521,11 +530,42 @@ body.menu {
     position: relative;
     z-index: 3;
     min-height: var(--viewport-height);
+    display: grid;
+    place-items: center;
+    padding: clamp(40px, 8vh, 78px) 24px clamp(132px, 18vh, 184px);
+    text-align: center;
+    overflow: hidden;
+}
+
+.menu-view {
+    grid-area: 1 / 1;
+    width: min(960px, 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: clamp(40px, 8vh, 78px) 24px clamp(132px, 18vh, 184px);
-    text-align: center;
+    transition: opacity 180ms linear, transform 180ms ease-out;
+}
+
+.menu-view-main {
+    z-index: 2;
+}
+
+.menu-view-howto {
+    z-index: 3;
+}
+
+body[data-menu-view="main"] .menu-view-main,
+body[data-menu-view="how-to-play"] .menu-view-howto {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+body[data-menu-view="main"] .menu-view-howto,
+body[data-menu-view="how-to-play"] .menu-view-main {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(18px);
 }
 
 .menu-stack {
@@ -535,6 +575,79 @@ body.menu {
     width: min(860px, 94vw);
     gap: 28px;
     transform: translateY(-18px);
+}
+
+.how-screen-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: min(720px, 100%);
+    gap: 24px;
+    transform: translateY(-8px);
+}
+
+.how-screen-title {
+    margin: 0;
+    color: #fff8ca;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    line-height: 1.2;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-shadow:
+        0 5px 0 rgba(43, 24, 4, 0.96),
+        0 0 18px rgba(255, 224, 113, 0.42);
+}
+
+.how-screen-copy {
+    display: grid;
+    gap: 22px;
+    justify-items: center;
+    width: min(700px, 100%);
+}
+
+.how-screen-section {
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+    width: 100%;
+}
+
+.how-screen-section-title {
+    margin: 0;
+    color: #ffe36b;
+    font-size: clamp(0.82rem, 1.35vw, 1rem);
+    line-height: 1.45;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-shadow: 0 3px 0 rgba(43, 24, 4, 0.94);
+}
+
+.how-screen-list {
+    list-style: none;
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    width: min(640px, 100%);
+}
+
+.how-screen-list li {
+    color: #fff8e4;
+    font-size: clamp(0.84rem, 1.28vw, 1rem);
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+    text-shadow:
+        0 3px 0 rgba(28, 19, 8, 0.88),
+        0 0 12px rgba(255, 233, 164, 0.16);
+}
+
+.how-screen-inline {
+    color: #ffe36b;
+}
+
+.menu-back-action {
+    margin-top: 10px;
 }
 
 .menu-title-wrap {
@@ -668,6 +781,12 @@ body.menu {
     overflow: visible;
     pointer-events: none;
     z-index: 4;
+    transition: opacity 160ms linear, transform 160ms ease-out;
+}
+
+body[data-menu-view="how-to-play"] .menu-runner-lane {
+    opacity: 0;
+    transform: translateY(14px);
 }
 
 .menu-runner-bubble {
@@ -823,7 +942,7 @@ canvas {
     left: 0;
     top: 0;
     z-index: 6;
-    width: clamp(276px, 31vw, 384px);
+    width: clamp(316px, 35vw, 442px);
     aspect-ratio: 3 / 2;
     opacity: 0;
     visibility: hidden;
@@ -850,12 +969,12 @@ canvas {
 
 .player-dialogue-text {
     position: absolute;
-    inset: 24% 21% 44% 25%;
+    inset: 24.5% 24% 45.5% 29%;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    padding: 2px 0;
+    padding: 3px 4px 0;
     color: #5b320d;
     font-family: "Press Start 2P", "Lucida Console", monospace;
     font-size: 8.5px;
@@ -871,9 +990,9 @@ canvas {
 
 .mobile-controls {
     position: fixed;
-    left: max(12px, env(safe-area-inset-left, 0px) + 12px);
-    right: max(12px, env(safe-area-inset-right, 0px) + 12px);
-    bottom: max(14px, env(safe-area-inset-bottom, 0px) + 14px);
+    left: max(var(--ui-edge-padding), calc(env(safe-area-inset-left, 0px) + var(--ui-edge-padding)));
+    right: max(var(--ui-edge-padding), calc(env(safe-area-inset-right, 0px) + var(--ui-edge-padding)));
+    bottom: max(calc(var(--ui-edge-padding) + 2px), calc(env(safe-area-inset-bottom, 0px) + var(--ui-edge-padding) + 2px));
     z-index: 8;
     display: none;
     align-items: flex-end;
@@ -883,20 +1002,20 @@ canvas {
 
 .mobile-move-cluster {
     display: flex;
-    gap: 12px;
+    gap: calc(8px + 4px * var(--touch-ui-scale));
     pointer-events: none;
 }
 
 .touch-button {
-    min-width: 78px;
-    height: 78px;
-    padding: 0 16px;
-    border: 3px solid rgba(255, 228, 142, 0.72);
-    border-radius: 24px;
+    min-width: calc(60px + 18px * var(--touch-ui-scale));
+    height: calc(60px + 18px * var(--touch-ui-scale));
+    padding: 0 calc(10px + 6px * var(--touch-ui-scale));
+    border: calc(2px + 1px * var(--touch-ui-scale)) solid rgba(255, 228, 142, 0.72);
+    border-radius: calc(18px + 6px * var(--touch-ui-scale));
     background: rgba(23, 17, 31, 0.76);
     color: #fff3c2;
     font-family: "Press Start 2P", "Lucida Console", monospace;
-    font-size: 0.62rem;
+    font-size: calc(0.46rem + 0.16rem * var(--touch-ui-scale));
     letter-spacing: 0.08em;
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.1),
@@ -908,7 +1027,7 @@ canvas {
 }
 
 .touch-button-jump {
-    min-width: 102px;
+    min-width: calc(80px + 22px * var(--touch-ui-scale));
 }
 
 .touch-button.is-active {
@@ -919,23 +1038,23 @@ canvas {
 
 .hud {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    top: calc(env(safe-area-inset-top, 0px) + var(--ui-corner-margin) - 2px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 4;
-    width: min(92vw, 720px);
+    width: min(calc(var(--viewport-width) - (2 * var(--ui-edge-padding))), calc(460px + 260px * var(--ui-scale)));
 }
 
 .hud-line {
     width: 100%;
-    padding: 12px 20px;
-    border-radius: 14px;
+    padding: calc(10px + 2px * var(--ui-scale)) calc(14px + 6px * var(--ui-scale));
+    border-radius: calc(12px + 2px * var(--ui-scale));
     background: rgba(10, 14, 28, 0.82);
     border: 1px solid rgba(251, 191, 36, 0.24);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
     backdrop-filter: blur(10px);
     color: #fff7ed;
-    font-size: clamp(1rem, 1.3vw, 1.14rem);
+    font-size: calc(0.78rem + 0.28rem * var(--ui-scale));
     letter-spacing: 0.03em;
     white-space: nowrap;
     text-align: center;
@@ -943,23 +1062,23 @@ canvas {
 
 .corner-controls {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 18px);
-    right: calc(env(safe-area-inset-right, 0px) + 18px);
+    top: calc(env(safe-area-inset-top, 0px) + var(--ui-corner-margin));
+    right: calc(env(safe-area-inset-right, 0px) + var(--ui-corner-margin));
     z-index: 5;
     display: flex;
-    gap: 10px;
+    gap: calc(6px + 4px * var(--ui-scale));
 }
 
 .corner-button {
-    min-width: 70px;
-    height: 38px;
-    padding: 0 14px;
+    min-width: calc(52px + 18px * var(--ui-scale));
+    height: calc(30px + 8px * var(--ui-scale));
+    padding: 0 calc(8px + 6px * var(--ui-scale));
     border: 1px solid rgba(255, 247, 237, 0.18);
     border-radius: 999px;
     background: rgba(10, 14, 28, 0.46);
     color: #fff7ed;
     font: inherit;
-    font-size: 0.82rem;
+    font-size: calc(0.62rem + 0.2rem * var(--ui-scale));
     letter-spacing: 0.02em;
     cursor: pointer;
     opacity: 0.78;
@@ -1037,24 +1156,26 @@ canvas {
     z-index: 9;
     display: grid;
     place-items: center;
-    padding: 24px;
+    padding: var(--ui-overlay-padding);
     background: rgba(5, 8, 22, 0.72);
     backdrop-filter: blur(10px);
 }
 
 .overlay-card {
-    width: min(980px, 100%);
-    padding: 32px;
-    border-radius: 28px;
+    width: min(calc(400px + 580px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
+    max-height: calc(var(--viewport-height) - (2 * var(--ui-overlay-padding)));
+    padding: calc(18px + 14px * var(--overlay-scale));
+    border-radius: calc(18px + 10px * var(--overlay-scale));
     background:
         radial-gradient(circle at top, rgba(249, 115, 22, 0.18), transparent 34%),
         rgba(13, 18, 33, 0.94);
     border: 1px solid rgba(251, 191, 36, 0.26);
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+    overflow: auto;
 }
 
 .compact-card {
-    width: min(580px, 100%);
+    width: min(calc(340px + 240px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
 }
 
 .scroll-surface {
@@ -1066,20 +1187,21 @@ canvas {
 
 .pause-card {
     position: relative;
-    width: min(80vw, 62vh, 500px);
+    width: min(calc(320px + 180px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))), calc(var(--viewport-height) * 0.72));
     aspect-ratio: 1 / 1;
     padding: 0;
     text-align: center;
+    overflow: visible;
 }
 
 .pause-scroll-content {
     position: absolute;
-    inset: 24% 19% 21% 19%;
+    inset: 24.5% 18.5% 20.5% 18.5%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: calc(4px + 2px * var(--overlay-scale));
 }
 
 .pause-card h2,
@@ -1146,8 +1268,8 @@ canvas {
 
 .gameover-image {
     display: block;
-    width: min(460px, 80vw);
-    margin: 0 auto 18px;
+    width: min(calc(220px + 240px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
+    margin: 0 auto calc(12px + 6px * var(--overlay-scale));
     animation: pulseGameOver 1.8s ease-in-out infinite;
 }
 
@@ -1174,23 +1296,27 @@ canvas {
 .overlay-card p {
     color: #ffedd5;
     line-height: 1.65;
+    font-size: calc(0.78rem + 0.18rem * var(--overlay-scale));
 }
 
 .scoreboard-card {
     text-align: center;
+    display: grid;
+    gap: calc(8px + 4px * var(--overlay-scale));
+    align-content: start;
 }
 
 .scoreboard-current {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin: 20px 0 16px;
+    gap: calc(8px + 4px * var(--overlay-scale));
+    margin: calc(14px + 6px * var(--overlay-scale)) 0 calc(12px + 4px * var(--overlay-scale));
 }
 
 .scoreboard-current p {
     margin: 0;
-    padding: 14px;
-    border-radius: 16px;
+    padding: calc(10px + 4px * var(--overlay-scale));
+    border-radius: calc(12px + 4px * var(--overlay-scale));
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -1198,25 +1324,26 @@ canvas {
 .initials-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: calc(8px + 4px * var(--overlay-scale));
     justify-content: center;
-    margin: 18px 0;
+    margin: calc(14px + 4px * var(--overlay-scale)) 0;
 }
 
 .initials-row input {
-    width: 96px;
-    padding: 12px 14px;
-    border-radius: 12px;
+    width: calc(76px + 20px * var(--overlay-scale));
+    padding: calc(8px + 4px * var(--overlay-scale)) calc(10px + 4px * var(--overlay-scale));
+    border-radius: calc(8px + 4px * var(--overlay-scale));
     border: 1px solid rgba(255, 247, 237, 0.18);
     background: rgba(255, 255, 255, 0.06);
     color: #fff7ed;
     text-transform: uppercase;
     text-align: center;
+    font-size: calc(0.78rem + 0.08rem * var(--overlay-scale));
 }
 
 .scoreboard-table-wrap {
     overflow: auto;
-    margin: 16px 0 22px;
+    margin: calc(12px + 4px * var(--overlay-scale)) 0 calc(14px + 8px * var(--overlay-scale));
 }
 
 .scoreboard-table {
@@ -1226,9 +1353,10 @@ canvas {
 
 .scoreboard-table th,
 .scoreboard-table td {
-    padding: 12px 10px;
+    padding: calc(8px + 4px * var(--overlay-scale)) calc(6px + 4px * var(--overlay-scale));
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: calc(0.68rem + 0.18rem * var(--overlay-scale));
 }
 
 .scoreboard-table th {
@@ -1242,7 +1370,7 @@ canvas {
 .scoreboard-actions,
 .overlay-actions {
     display: flex;
-    gap: 12px;
+    gap: calc(8px + 4px * var(--overlay-scale));
     justify-content: center;
     flex-wrap: wrap;
 }
@@ -1371,11 +1499,11 @@ canvas {
 
 @media (max-width: 720px) {
     .player-dialogue-bubble {
-        width: clamp(216px, 50vw, 276px);
+        width: clamp(248px, 58vw, 320px);
     }
 
     .player-dialogue-text {
-        inset: 24% 21% 46% 25%;
+        inset: 25% 24.5% 46.5% 29.5%;
         font-size: 6.75px;
         line-height: 1.04;
     }
@@ -1384,10 +1512,34 @@ canvas {
         padding: 64px 16px 118px;
     }
 
+    .menu-view {
+        width: 100%;
+    }
+
     .menu-stack {
         width: min(560px, 94vw);
         gap: 20px;
         transform: translateY(-6px);
+    }
+
+    .how-screen-stack {
+        width: min(560px, 100%);
+        gap: 18px;
+        transform: none;
+    }
+
+    .how-screen-copy {
+        gap: 18px;
+    }
+
+    .how-screen-list {
+        gap: 10px;
+        width: min(500px, 100%);
+    }
+
+    .how-screen-list li {
+        font-size: 0.78rem;
+        line-height: 1.72;
     }
 
     .menu-title-wrap {
@@ -1589,10 +1741,42 @@ canvas {
         padding: 44px 12px 112px;
     }
 
+    .menu-view {
+        width: 100%;
+    }
+
     .menu-stack {
         width: 94vw;
         gap: 16px;
         transform: none;
+    }
+
+    .how-screen-stack {
+        width: 100%;
+        gap: 16px;
+    }
+
+    .how-screen-title {
+        font-size: clamp(1.45rem, 9vw, 2.2rem);
+        letter-spacing: 0.1em;
+    }
+
+    .how-screen-section-title {
+        font-size: 0.7rem;
+    }
+
+    .how-screen-copy {
+        gap: 16px;
+    }
+
+    .how-screen-list {
+        gap: 8px;
+        width: min(100%, 92vw);
+    }
+
+    .how-screen-list li {
+        font-size: 0.66rem;
+        line-height: 1.7;
     }
 
     .menu-title-wrap {
@@ -1733,6 +1917,24 @@ canvas {
         transform: translateX(8px);
     }
 
+    .how-screen-stack {
+        gap: 16px;
+        transform: none;
+    }
+
+    .how-screen-copy {
+        gap: 14px;
+    }
+
+    .how-screen-list {
+        gap: 8px;
+    }
+
+    .how-screen-list li {
+        font-size: 0.76rem;
+        line-height: 1.58;
+    }
+
     .menu-runner-lane {
         height: 138px;
     }
@@ -1757,7 +1959,79 @@ canvas {
     }
 }
 
+@media (max-width: 900px), (pointer: coarse) {
+    .corner-controls {
+        top: calc(env(safe-area-inset-top, 0px) + var(--ui-corner-margin));
+        right: calc(env(safe-area-inset-right, 0px) + var(--ui-corner-margin));
+        gap: calc(6px + 4px * var(--ui-scale));
+    }
+
+    .corner-button {
+        min-width: calc(52px + 18px * var(--ui-scale));
+        height: calc(30px + 8px * var(--ui-scale));
+        padding: 0 calc(8px + 6px * var(--ui-scale));
+        font-size: calc(0.62rem + 0.2rem * var(--ui-scale));
+    }
+
+    .mobile-controls {
+        left: max(var(--ui-edge-padding), calc(env(safe-area-inset-left, 0px) + var(--ui-edge-padding)));
+        right: max(var(--ui-edge-padding), calc(env(safe-area-inset-right, 0px) + var(--ui-edge-padding)));
+        bottom: max(calc(var(--ui-edge-padding) + 2px), calc(env(safe-area-inset-bottom, 0px) + var(--ui-edge-padding) + 2px));
+    }
+
+    .mobile-move-cluster {
+        gap: calc(8px + 4px * var(--touch-ui-scale));
+    }
+
+    .touch-button {
+        min-width: calc(60px + 18px * var(--touch-ui-scale));
+        height: calc(60px + 18px * var(--touch-ui-scale));
+        padding: 0 calc(10px + 6px * var(--touch-ui-scale));
+        border-radius: calc(18px + 6px * var(--touch-ui-scale));
+        font-size: calc(0.46rem + 0.16rem * var(--touch-ui-scale));
+    }
+
+    .touch-button-jump {
+        min-width: calc(80px + 22px * var(--touch-ui-scale));
+    }
+
+    .game-overlay {
+        padding: var(--ui-overlay-padding);
+    }
+
+    .overlay-card {
+        width: min(calc(360px + 500px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
+        max-height: calc(var(--viewport-height) - (2 * var(--ui-overlay-padding)));
+    }
+
+    .compact-card {
+        width: min(calc(320px + 220px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))));
+    }
+
+    .pause-card {
+        width: min(calc(300px + 160px * var(--overlay-scale)), calc(var(--viewport-width) - (2 * var(--ui-overlay-padding))), calc(var(--viewport-height) * 0.7));
+    }
+
+    .scoreboard-card {
+        gap: calc(8px + 4px * var(--overlay-scale));
+    }
+
+    .scoreboard-current {
+        grid-template-columns: 1fr;
+    }
+
+    .initials-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
+    .menu-view,
+    .menu-runner-lane {
+        transition: none;
+    }
+
     .menu-action,
     .menu-toggle-row,
     .menu-toggle-box,

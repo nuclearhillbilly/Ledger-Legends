@@ -7,7 +7,7 @@
     <title>Ledger Legends</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="menu">
+<body class="menu" data-menu-view="main">
     <div class="menu-background" aria-hidden="true"></div>
     <div class="menu-bird-sky" aria-hidden="true">
         <img class="menu-bird menu-bird-one" src="assets/birdsprite_wingsup.png" alt="">
@@ -16,23 +16,55 @@
     </div>
 
     <main class="menu-screen">
-        <section class="menu-stack" aria-labelledby="menuTitle">
-            <h1 id="menuTitle" class="sr-only">Ledger Legends</h1>
-            <div class="menu-title-wrap" aria-hidden="true">
-                <img class="menu-title-image" src="assets/UI_title.png" alt="">
-            </div>
+        <section id="mainMenuScreen" class="menu-view menu-view-main" aria-labelledby="menuTitle">
+            <div class="menu-stack">
+                <h1 id="menuTitle" class="sr-only">Ledger Legends</h1>
+                <div class="menu-title-wrap" aria-hidden="true">
+                    <img class="menu-title-image" src="assets/UI_title.png" alt="">
+                </div>
 
-            <nav class="menu-list" aria-label="Main menu">
-                <button id="startGameButton" class="menu-action" type="button">Start Game</button>
-                <button id="howToPlayButton" class="menu-action" type="button">How to Play</button>
-                <label class="menu-toggle-row" for="devModeToggle">
-                    <span class="menu-action-label">Enable Developer Mode</span>
-                    <span class="menu-toggle-control">
-                        <input id="devModeToggle" type="checkbox">
-                        <span class="menu-toggle-box" aria-hidden="true"></span>
-                    </span>
-                </label>
-            </nav>
+                <nav class="menu-list" aria-label="Main menu">
+                    <button id="startGameButton" class="menu-action" type="button">Start Game</button>
+                    <button id="howToPlayButton" class="menu-action" type="button">How to Play</button>
+                    <label class="menu-toggle-row" for="devModeToggle">
+                        <span class="menu-action-label">Enable Developer Mode</span>
+                        <span class="menu-toggle-control">
+                            <input id="devModeToggle" type="checkbox">
+                            <span class="menu-toggle-box" aria-hidden="true"></span>
+                        </span>
+                    </label>
+                </nav>
+            </div>
+        </section>
+
+        <section id="howToPlayScreen" class="menu-view menu-view-howto" aria-labelledby="howToPlayTitle" aria-hidden="true" inert>
+            <div class="how-screen-stack">
+                <h2 id="howToPlayTitle" class="how-screen-title">How to Play</h2>
+
+                <div class="how-screen-copy" aria-label="Instructions and controls">
+                    <section class="how-screen-section" aria-labelledby="howToPlayBasicsTitle">
+                        <h3 id="howToPlayBasicsTitle" class="how-screen-section-title">Instructions</h3>
+                        <ul class="how-screen-list">
+                            <li>Jump between platforms and keep your run alive.</li>
+                            <li>Avoid the lava, arrows, and other hazards in your path.</li>
+                            <li>Answer accounting questions when danger catches up to you.</li>
+                            <li>Push for the highest distance you can reach.</li>
+                        </ul>
+                    </section>
+
+                    <section class="how-screen-section" aria-labelledby="howToPlayControlsTitle">
+                        <h3 id="howToPlayControlsTitle" class="how-screen-section-title">Controls</h3>
+                        <ul class="how-screen-list">
+                            <li>Move: <span class="how-screen-inline">A / D</span> or <span class="how-screen-inline">Left / Right</span></li>
+                            <li>Jump: <span class="how-screen-inline">Space</span>, <span class="how-screen-inline">W</span>, or <span class="how-screen-inline">Up</span></li>
+                            <li>Mobile: Use the on-screen <span class="how-screen-inline">Left</span>, <span class="how-screen-inline">Right</span>, and <span class="how-screen-inline">Jump</span> buttons</li>
+                            <li>Touch or click prompts when the game asks for an answer.</li>
+                        </ul>
+                    </section>
+                </div>
+
+                <button id="backToMenuButton" class="menu-action menu-back-action" type="button">Back</button>
+            </div>
         </section>
     </main>
 
@@ -88,12 +120,11 @@
         "One question at a time.",
         "I'm passing this. No matter what."
     ];
-    const HOW_TO_PLAY_MESSAGE = [
-        "Desktop: Arrow keys or A/D move.",
-        "Jump: Space, Up, or W.",
-        "Mobile: Hold left or right side to move and tap to jump.",
-        "Falling in lava triggers an accounting challenge."
-    ].join("\n");
+    const MENU_VIEWS = {
+        MAIN: "main",
+        HOW_TO_PLAY: "how-to-play"
+    };
+    let menuView = MENU_VIEWS.MAIN;
 
     function readGameSettings() {
         try {
@@ -117,8 +148,35 @@
         window.location.href = "game.html";
     }
 
+    function setMenuView(nextView, focusTargetId) {
+        const mainMenuScreen = document.getElementById("mainMenuScreen");
+        const howToPlayScreen = document.getElementById("howToPlayScreen");
+        const safeView = nextView === MENU_VIEWS.HOW_TO_PLAY ? MENU_VIEWS.HOW_TO_PLAY : MENU_VIEWS.MAIN;
+        const showingHowToPlay = safeView === MENU_VIEWS.HOW_TO_PLAY;
+        menuView = safeView;
+
+        document.body.dataset.menuView = safeView;
+        mainMenuScreen.setAttribute("aria-hidden", showingHowToPlay ? "true" : "false");
+        howToPlayScreen.setAttribute("aria-hidden", showingHowToPlay ? "false" : "true");
+        mainMenuScreen.inert = showingHowToPlay;
+        howToPlayScreen.inert = !showingHowToPlay;
+
+        if (focusTargetId) {
+            const focusTarget = document.getElementById(focusTargetId);
+            if (focusTarget) {
+                window.requestAnimationFrame(function () {
+                    focusTarget.focus({ preventScroll: true });
+                });
+            }
+        }
+    }
+
     function showHowToPlay() {
-        window.alert(HOW_TO_PLAY_MESSAGE);
+        setMenuView(MENU_VIEWS.HOW_TO_PLAY, "backToMenuButton");
+    }
+
+    function showMainMenu() {
+        setMenuView(MENU_VIEWS.MAIN, "howToPlayButton");
     }
 
     function shuffleList(list) {
@@ -381,11 +439,20 @@
         const devModeToggle = document.getElementById("devModeToggle");
         const startGameButton = document.getElementById("startGameButton");
         const howToPlayButton = document.getElementById("howToPlayButton");
+        const backToMenuButton = document.getElementById("backToMenuButton");
 
         startGameButton.addEventListener("click", launchGame);
         howToPlayButton.addEventListener("click", showHowToPlay);
+        backToMenuButton.addEventListener("click", showMainMenu);
         devModeToggle.addEventListener("change", saveGameSettings);
+        window.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && menuView === MENU_VIEWS.HOW_TO_PLAY) {
+                showMainMenu();
+            }
+        });
+
         devModeToggle.checked = !!settings.devMode;
+        setMenuView(MENU_VIEWS.MAIN);
         startMenuScene();
     })();
     </script>
