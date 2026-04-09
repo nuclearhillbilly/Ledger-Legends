@@ -192,30 +192,58 @@
             return Math.max(28, window.innerWidth - (runner.offsetWidth || 140) - 28);
         }
 
+        function positionMenuBubble(runnerX, runnerBob, direction, visible, bubbleLift) {
+            const runnerWidth = runner.offsetWidth || 140;
+            const bubbleWidth = bubble.offsetWidth || 180;
+            const headAnchor = direction === 1 ? 0.38 : 0.62;
+            const bubbleTailAnchor = 0.21;
+            const anchorX = runnerX + (runnerWidth * headAnchor);
+            const bubbleX = Math.max(
+                12,
+                Math.min(
+                    window.innerWidth - bubbleWidth - 12,
+                    anchorX - (bubbleWidth * bubbleTailAnchor)
+                )
+            );
+
+            bubble.style.opacity = visible ? "1" : "0";
+            bubble.style.transform = `translate3d(${bubbleX}px, ${runnerBob - 14 - bubbleLift}px, 0) scale(${visible ? 1 : 0.92})`;
+        }
+
         function fitMenuBubbleText(text) {
             const isCompactViewport = window.innerWidth <= 720;
-            const baseFontSize = isCompactViewport ? 6.75 : 8.25;
-            const minFontSize = isCompactViewport ? 5.25 : 5.75;
+            const baseFontSize = isCompactViewport ? 6.15 : 7.55;
+            const minFontSize = isCompactViewport ? 4.45 : 5;
             let fontSize = baseFontSize;
-            let lineHeight = fontSize <= 6 ? 1.02 : fontSize <= 7 ? 1.06 : 1.1;
-            let letterSpacing = fontSize <= 6 ? "0" : "0.01em";
+            let lineHeight = fontSize <= 5.2 ? 0.98 : fontSize <= 6.3 ? 1.01 : 1.05;
+            let letterSpacing = fontSize <= 5.2 ? "0" : "0.006em";
 
             bubbleText.textContent = text;
             bubbleText.style.fontSize = `${fontSize}px`;
             bubbleText.style.lineHeight = String(lineHeight);
             bubbleText.style.letterSpacing = letterSpacing;
+            bubbleText.style.transform = "scale(1)";
 
             while (
                 fontSize > minFontSize &&
                 (bubbleText.scrollHeight > bubbleText.clientHeight || bubbleText.scrollWidth > bubbleText.clientWidth)
             ) {
                 fontSize -= 0.25;
-                lineHeight = fontSize <= 6 ? 1.01 : fontSize <= 7 ? 1.04 : 1.08;
-                letterSpacing = fontSize <= 6 ? "0" : "0.008em";
+                lineHeight = fontSize <= 5.2 ? 0.98 : fontSize <= 6.2 ? 1 : 1.04;
+                letterSpacing = fontSize <= 5.2 ? "0" : "0.004em";
                 bubbleText.style.fontSize = `${fontSize}px`;
                 bubbleText.style.lineHeight = String(lineHeight);
                 bubbleText.style.letterSpacing = letterSpacing;
             }
+
+            const widthScale = bubbleText.scrollWidth > bubbleText.clientWidth
+                ? bubbleText.clientWidth / bubbleText.scrollWidth
+                : 1;
+            const heightScale = bubbleText.scrollHeight > bubbleText.clientHeight
+                ? bubbleText.clientHeight / bubbleText.scrollHeight
+                : 1;
+            const contentScale = Math.max(0.74, Math.min(1, widthScale, heightScale));
+            bubbleText.style.transform = contentScale < 0.999 ? `scale(${contentScale})` : "scale(1)";
         }
 
         function nextMenuDialogueLine() {
@@ -244,9 +272,8 @@
             runner.src = playerFrames[1];
             runner.style.transform = "translate3d(28px, 0, 0) scaleX(1)";
             monster.style.transform = "translate3d(0, 0, 0) scaleX(1)";
-            bubble.style.opacity = "1";
             fitMenuBubbleText(dialogueState.currentLine);
-            bubble.style.transform = "translate3d(-6px, -2px, 0) scale(1)";
+            positionMenuBubble(28, 0, 1, true, 0);
 
             birdStates.forEach(function (birdState, index) {
                 const staticX = 44 + index * 132;
@@ -303,18 +330,8 @@
                 nextMenuDialogueLine();
             }
 
-            const runnerWidth = runner.offsetWidth || 140;
-            const bubbleWidth = bubble.offsetWidth || 180;
-            const bubbleX = Math.max(
-                12,
-                Math.min(
-                    window.innerWidth - bubbleWidth - 12,
-                    chaseState.x + (runnerWidth * 0.5) - (bubbleWidth * 0.5)
-                )
-            );
             const bubbleLift = bubbleVisible ? Math.sin((bubblePhase / bubbleWindow) * Math.PI) * 7 : 0;
-            bubble.style.opacity = bubbleVisible ? "1" : "0";
-            bubble.style.transform = `translate3d(${bubbleX}px, ${runnerBob - 10 - bubbleLift}px, 0) scale(${bubbleVisible ? 1 : 0.92})`;
+            positionMenuBubble(chaseState.x, runnerBob, chaseState.direction, bubbleVisible, bubbleLift);
             dialogueState.lastVisible = bubbleVisible;
 
             birdStates.forEach(function (birdState, index) {

@@ -126,6 +126,9 @@
     const LAVA_MONSTER_CHASE_GAP_MAX = 156;
     const LAVA_MONSTER_FOREGROUND_HEIGHT = 48;
     const MOBILE_TOUCH_BREAKPOINT = 900;
+    const ARROW_HAZARD_START_METERS = 1000;
+    const ARROW_HAZARD_WIDTH = 112;
+    const ARROW_HAZARD_HEIGHT = 52;
 
     function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
@@ -365,6 +368,7 @@
             isQuestionActive: false,
             isGameOver: false,
             scoreSaved: false,
+            sceneTimeMs: 0,
             distancePixels: 0,
             distanceMeters: 0,
             maxWorldX: 0,
@@ -383,6 +387,8 @@
             activeAmbience: null,
             flyerSpawnTimer: 0,
             flyers: [],
+            arrowHazards: [],
+            arrowSpawnTimer: 0,
             dialogue: {
                 deck: [],
                 lastLine: "",
@@ -483,28 +489,38 @@
 
             const textNode = dom.playerDialogueText;
             const isCompactViewport = window.innerWidth <= 720;
-            const baseFontSize = isCompactViewport ? 6.75 : 8.5;
-            const minFontSize = isCompactViewport ? 5 : 5.75;
+            const baseFontSize = isCompactViewport ? 6.2 : 7.8;
+            const minFontSize = isCompactViewport ? 4.35 : 5.1;
             let fontSize = baseFontSize;
-            let lineHeight = fontSize <= 6 ? 1 : fontSize <= 7 ? 1.04 : 1.08;
-            let letterSpacing = fontSize <= 6 ? "0" : fontSize <= 7 ? "0.006em" : "0.01em";
+            let lineHeight = fontSize <= 5.2 ? 0.98 : fontSize <= 6.5 ? 1.01 : 1.05;
+            let letterSpacing = fontSize <= 5.2 ? "0" : fontSize <= 6.2 ? "0.003em" : "0.006em";
 
             textNode.textContent = text;
             textNode.style.fontSize = `${fontSize}px`;
             textNode.style.lineHeight = String(lineHeight);
             textNode.style.letterSpacing = letterSpacing;
+            textNode.style.transform = "scale(1)";
 
             while (
                 fontSize > minFontSize &&
                 (textNode.scrollHeight > textNode.clientHeight || textNode.scrollWidth > textNode.clientWidth)
             ) {
                 fontSize -= 0.25;
-                lineHeight = fontSize <= 6 ? 1 : fontSize <= 7 ? 1.03 : 1.07;
-                letterSpacing = fontSize <= 6 ? "0" : fontSize <= 7 ? "0.004em" : "0.008em";
+                lineHeight = fontSize <= 5.2 ? 0.98 : fontSize <= 6.3 ? 1 : 1.04;
+                letterSpacing = fontSize <= 5.2 ? "0" : fontSize <= 6.2 ? "0.002em" : "0.005em";
                 textNode.style.fontSize = `${fontSize}px`;
                 textNode.style.lineHeight = String(lineHeight);
                 textNode.style.letterSpacing = letterSpacing;
             }
+
+            const widthScale = textNode.scrollWidth > textNode.clientWidth
+                ? textNode.clientWidth / textNode.scrollWidth
+                : 1;
+            const heightScale = textNode.scrollHeight > textNode.clientHeight
+                ? textNode.clientHeight / textNode.scrollHeight
+                : 1;
+            const contentScale = Math.max(0.7, Math.min(1, widthScale, heightScale));
+            textNode.style.transform = contentScale < 0.999 ? `scale(${contentScale})` : "scale(1)";
         }
 
         function canShowPlayerDialogue() {
@@ -640,17 +656,279 @@
             return clamp(canvas.width * 0.105, LAVA_MONSTER_MIN_WIDTH, LAVA_MONSTER_MAX_WIDTH);
         }
 
+        function getLavaMonsterScreenBounds(width) {
+            return {
+                min: width * 0.58,
+                max: Math.max(width * 0.58, canvas.width - width * 0.58)
+            };
+        }
+
+        function pickLavaMonsterTarget(width) {
+            const bounds = getLavaMonsterScreenBounds(width);
+            const range = Math.max(0, bounds.max - bounds.min);
+            const targetFractions = range < 180
+                ? [0.16, 0.52, 0.86]
+                : [0.08, 0.28, 0.5, 0.72, 0.9];
+            const targetBase = targetFractions[Math.floor(Math.random() * targetFractions.length)];
+            const jitter = randomBetween(-0.08, 0.08);
+            return clamp(bounds.min + range * (targetBase + jitter), bounds.min, bounds.max);
+        }
+
         function resetLavaMonster() {
+            const width = getLavaMonsterWidth();
+            const initialTarget = pickLavaMonsterTarget(width);
             state.lavaMonster = {
-                screenX: NaN,
+                screenX: initialTarget,
+                targetScreenX: initialTarget,
                 direction: 1,
-                speed: randomBetween(104, 148),
-                chaseGap: randomBetween(LAVA_MONSTER_CHASE_GAP_MIN, LAVA_MONSTER_CHASE_GAP_MAX),
-                swaySeed: randomBetween(0, Math.PI * 2),
+                speed: randomBetween(46, 78),
+                pauseMs: randomBetween(520, 1200),
                 lastStep: 0,
                 bobSeed: randomBetween(0, Math.PI * 2),
                 submergeDepth: randomBetween(34, 40)
             };
+        }
+
+        function getArrowHazardIntensity(distanceMeters) {
+            return clamp((distanceMeters - ARROW_HAZARD_START_METERS) / 2800, 0, 1);
+        }
+
+        function getArrowSpawnDelayMs(distanceMeters, warmup) {
+            const intensity = getArrowHazardIntensity(distanceMeters);
+            const minDelay = 2500 - intensity * 1100;
+            const maxDelay = 3900 - intensity * 1600;
+            const extraDelay = warmup ? randomBetween(480, 920) : 0;
+            return randomBetween(minDelay, maxDelay) + extraDelay;
+        }
+
+        function getArrowSpeed(distanceMeters) {
+            const intensity = getArrowHazardIntensity(distanceMeters);
+            return randomBetween(236 + intensity * 34, 296 + intensity * 74);
+        }
+
+        function getArrowMaxOnScreen(distanceMeters) {
+            return distanceMeters >= 2600 ? 2 : 1;
+        }
+
+        function getArrowHazardDimensions() {
+            const arrowImage = assets.images.arrow;
+            if (imageReady(arrowImage) && arrowImage.naturalWidth > 0 && arrowImage.naturalHeight > 0) {
+                return {
+                    width: Math.round(ARROW_HAZARD_HEIGHT * (arrowImage.naturalWidth / arrowImage.naturalHeight)),
+                    height: ARROW_HAZARD_HEIGHT
+                };
+            }
+
+            return {
+                width: ARROW_HAZARD_WIDTH,
+                height: ARROW_HAZARD_HEIGHT
+            };
+        }
+
+        function resetArrowHazards(startSoon) {
+            state.arrowHazards = [];
+            state.arrowSpawnTimer = getArrowSpawnDelayMs(
+                Math.max(state.distanceMeters, ARROW_HAZARD_START_METERS),
+                !!startSoon
+            );
+        }
+
+        function pickArrowLaneY(height) {
+            const safeTop = 74;
+            const safeBottom = Math.max(safeTop, getLavaSurfaceY() - height - 30);
+            const laneSpan = Math.max(0, safeBottom - safeTop);
+            const laneFractions = laneSpan < 130
+                ? [0.62, 0.8]
+                : laneSpan < 190
+                    ? [0.58, 0.74, 0.88]
+                    : [0.56, 0.68, 0.8, 0.9];
+            const laneTargets = laneFractions.map(function (fraction) {
+                return clamp(safeTop + laneSpan * fraction, safeTop, safeBottom);
+            });
+            return laneTargets[Math.floor(Math.random() * laneTargets.length)];
+        }
+
+        function createArrowHazard() {
+            const size = getArrowHazardDimensions();
+            return {
+                x: canvas.width + size.width + randomBetween(28, 72),
+                y: pickArrowLaneY(size.height),
+                width: size.width,
+                height: size.height,
+                direction: -1,
+                speed: getArrowSpeed(state.distanceMeters)
+            };
+        }
+
+        function getPlayerScreenBounds() {
+            const screenX = player.x - state.cameraX;
+            return {
+                left: screenX + 6,
+                right: screenX + player.width - 6,
+                top: player.hitboxTopY + 4,
+                bottom: player.bottomY - 4
+            };
+        }
+
+        function arrowHazardOverlapsPlayer(hazard) {
+            if (!player) {
+                return false;
+            }
+
+            const playerBounds = getPlayerScreenBounds();
+            const hazardBounds = {
+                left: hazard.x + 4,
+                right: hazard.x + hazard.width - 4,
+                top: hazard.y + 4,
+                bottom: hazard.y + hazard.height - 4
+            };
+
+            return !(
+                playerBounds.right <= hazardBounds.left ||
+                playerBounds.left >= hazardBounds.right ||
+                playerBounds.bottom <= hazardBounds.top ||
+                playerBounds.top >= hazardBounds.bottom
+            );
+        }
+
+        function updateArrowHazards(deltaMs) {
+            if (!player || state.isPaused || state.isQuestionActive || state.isGameOver) {
+                return false;
+            }
+
+            if (state.distanceMeters < ARROW_HAZARD_START_METERS) {
+                if (state.arrowHazards.length) {
+                    state.arrowHazards = [];
+                }
+                if (!Number.isFinite(state.arrowSpawnTimer) || state.arrowSpawnTimer <= 0) {
+                    state.arrowSpawnTimer = getArrowSpawnDelayMs(ARROW_HAZARD_START_METERS, true);
+                }
+                return false;
+            }
+
+            state.arrowSpawnTimer -= deltaMs;
+            const maxOnScreen = getArrowMaxOnScreen(state.distanceMeters);
+
+            if (state.arrowSpawnTimer <= 0) {
+                if (state.arrowHazards.length < maxOnScreen) {
+                    state.arrowHazards.push(createArrowHazard());
+                    state.arrowSpawnTimer = getArrowSpawnDelayMs(state.distanceMeters, false);
+                } else {
+                    state.arrowSpawnTimer = 240;
+                }
+            }
+
+            const deltaSeconds = deltaMs / 1000;
+            let hitArrow = false;
+
+            state.arrowHazards.forEach(function (hazard) {
+                hazard.x += hazard.direction * hazard.speed * deltaSeconds;
+
+                if (!hitArrow && arrowHazardOverlapsPlayer(hazard)) {
+                    hitArrow = true;
+                    hazard.hit = true;
+                }
+            });
+
+            state.arrowHazards = state.arrowHazards.filter(function (hazard) {
+                return !hazard.hit &&
+                    hazard.x < canvas.width + hazard.width + 80 &&
+                    hazard.x + hazard.width > -hazard.width - 80;
+            });
+
+            if (hitArrow) {
+                resetArrowHazards(false);
+            }
+
+            return hitArrow;
+        }
+
+        function drawRetroArrowHazard(hazard, timeMs) {
+            const arrowImage = assets.images.arrow;
+            if (imageReady(arrowImage)) {
+                ctx.save();
+                ctx.imageSmoothingEnabled = false;
+                ctx.shadowColor = "rgba(28, 16, 8, 0.26)";
+                ctx.shadowBlur = 14;
+                ctx.translate(Math.round(hazard.x), Math.round(hazard.y));
+
+                if (hazard.direction < 0) {
+                    ctx.translate(hazard.width, 0);
+                    ctx.scale(-1, 1);
+                }
+
+                ctx.drawImage(arrowImage, 0, 0, hazard.width, hazard.height);
+                ctx.restore();
+                return;
+            }
+
+            const shadowColor = "rgba(35, 18, 8, 0.26)";
+            const outlineColor = "#2b180f";
+            const featherColor = "#6eaec0";
+            const featherShade = "#375e73";
+            const shaftColor = "#85522e";
+            const shaftShade = "#603717";
+            const tipColor = "#d8dce1";
+            const tipShade = "#7f8b97";
+            const highlightColor = Math.floor((timeMs || 0) / 120) % 2 === 0 ? "#fffdf1" : "#f3f5f7";
+            const pixelX = hazard.width / 32;
+            const pixelY = hazard.height / 16;
+            const drawBlock = function (x, y, w, h, color, offsetX, offsetY) {
+                ctx.fillStyle = color;
+                ctx.fillRect(
+                    Math.round((x + offsetX) * pixelX),
+                    Math.round((y + offsetY) * pixelY),
+                    Math.round(w * pixelX),
+                    Math.round(h * pixelY)
+                );
+            };
+            const drawArrowBody = function (offsetX, offsetY, isShadow) {
+                const outline = isShadow ? shadowColor : outlineColor;
+                drawBlock(0, 5, 5, 6, outline, offsetX, offsetY);
+                drawBlock(5, 6, 3, 4, outline, offsetX, offsetY);
+                drawBlock(8, 6, 10, 4, outline, offsetX, offsetY);
+                drawBlock(18, 5, 2, 6, outline, offsetX, offsetY);
+                drawBlock(20, 4, 3, 8, outline, offsetX, offsetY);
+                drawBlock(23, 3, 3, 10, outline, offsetX, offsetY);
+                drawBlock(26, 2, 3, 12, outline, offsetX, offsetY);
+                drawBlock(29, 1, 3, 14, outline, offsetX, offsetY);
+
+                if (isShadow) {
+                    return;
+                }
+
+                drawBlock(1, 6, 2, 4, featherColor, offsetX, offsetY);
+                drawBlock(3, 6, 1, 4, featherShade, offsetX, offsetY);
+                drawBlock(4, 7, 1, 2, featherShade, offsetX, offsetY);
+                drawBlock(8, 7, 9, 2, shaftColor, offsetX, offsetY);
+                drawBlock(8, 8, 9, 1, shaftShade, offsetX, offsetY);
+                drawBlock(18, 6, 1, 4, shaftShade, offsetX, offsetY);
+                drawBlock(20, 5, 2, 6, tipShade, offsetX, offsetY);
+                drawBlock(22, 4, 2, 8, tipColor, offsetX, offsetY);
+                drawBlock(24, 3, 2, 10, tipShade, offsetX, offsetY);
+                drawBlock(26, 2, 2, 12, tipColor, offsetX, offsetY);
+                drawBlock(28, 3, 1, 10, tipShade, offsetX, offsetY);
+                drawBlock(29, 2, 2, 12, tipColor, offsetX, offsetY);
+                drawBlock(30, 5, 1, 6, highlightColor, offsetX, offsetY);
+            };
+
+            ctx.save();
+            ctx.translate(Math.round(hazard.x), Math.round(hazard.y));
+
+            if (hazard.direction < 0) {
+                ctx.translate(hazard.width, 0);
+                ctx.scale(-1, 1);
+            }
+
+            drawArrowBody(1.5, 1.5, true);
+            drawArrowBody(0, 0, false);
+            ctx.restore();
+        }
+
+        function drawArrowHazards(timeMs) {
+            state.arrowHazards.forEach(function (hazard) {
+                drawRetroArrowHazard(hazard, timeMs);
+            });
         }
 
         function updateDevToolbar() {
@@ -893,6 +1171,33 @@
             };
         }
 
+        function resumeMusicPlayback() {
+            if (!state.audioUnlocked || state.isMuted || state.isPaused || state.isGameOver) {
+                return;
+            }
+
+            if (state.fade) {
+                if (state.fade.from) {
+                    safePlay(state.fade.from);
+                }
+
+                if (state.fade.to) {
+                    safePlay(state.fade.to);
+                }
+                return;
+            }
+
+            if (state.currentTrack) {
+                state.currentTrack.volume = MUSIC_VOLUME;
+                safePlay(state.currentTrack);
+                return;
+            }
+
+            if (state.musicTargetKey) {
+                startTrack(state.musicTargetKey);
+            }
+        }
+
         function updateMusic(deltaMs) {
             if (state.isMuted || state.isPaused || state.isGameOver || !state.audioUnlocked) {
                 return;
@@ -938,7 +1243,7 @@
 
             unlockAudio();
             if (!state.isPaused && !state.isGameOver) {
-                requestMusic(state.musicTargetKey);
+                resumeMusicPlayback();
             }
         }
 
@@ -984,6 +1289,7 @@
                 lavaRiver: ["assets/river-lava.png"],
                 lava: ["assets/lava.png"],
                 monsterLava: ["assets/monster-lava.png"],
+                arrow: ["assets/arrow.png"],
                 birdUp: ["assets/BirdSprite_WingsUp.png", "assets/birdsprite_wingsup.png"],
                 birdDown: ["assets/BirdSprite_WingDown.png", "assets/birdsprite_wingdown.png"],
                 batUp: ["assets/bat-up.png"],
@@ -1032,6 +1338,7 @@
             player.moveSpeed = BASE_RUN_SPEED;
 
             state.lastFrameTime = 0;
+            state.sceneTimeMs = 0;
             state.distancePixels = 0;
             state.distanceMeters = 0;
             state.maxWorldX = player.centerX;
@@ -1050,6 +1357,7 @@
             state.lavaSputterTimer = 0;
             resetLavaMonster();
             state.flyers = [];
+            resetArrowHazards(true);
             state.activeAmbience = null;
             state.flyerSpawnTimer = randomBetween(1400, 2800);
             state.musicTargetKey = LEVELS[0].music;
@@ -1368,34 +1676,40 @@
 
             const deltaSeconds = deltaMs / 1000;
             const monsterWidth = getLavaMonsterWidth();
-            const minScreenX = monsterWidth * 0.52;
-            const playerScreenX = player
-                ? player.centerX - state.cameraX
-                : canvas.width * 0.34;
-            const maxScreenX = Math.max(
-                minScreenX,
-                playerScreenX - Math.max(monsterWidth * 0.82, state.lavaMonster.chaseGap * 0.72)
-            );
-            const swayOffset = Math.sin((state.lastFrameTime || 0) * 0.0032 + state.lavaMonster.swaySeed) *
-                Math.min(8, state.lavaMonster.chaseGap * 0.05);
-            const targetScreenX = clamp(
-                playerScreenX - state.lavaMonster.chaseGap + swayOffset,
-                minScreenX,
-                maxScreenX
-            );
+            const bounds = getLavaMonsterScreenBounds(monsterWidth);
 
-            if (!Number.isFinite(state.lavaMonster.screenX)) {
-                state.lavaMonster.screenX = targetScreenX;
+            if (!Number.isFinite(state.lavaMonster.targetScreenX)) {
+                state.lavaMonster.targetScreenX = pickLavaMonsterTarget(monsterWidth);
             }
 
-            const maxStep = state.lavaMonster.speed * deltaSeconds;
-            const deltaX = targetScreenX - state.lavaMonster.screenX;
-            const appliedStep = clamp(deltaX, -maxStep, maxStep);
-            state.lavaMonster.screenX = clamp(state.lavaMonster.screenX + appliedStep, minScreenX, maxScreenX);
-            state.lavaMonster.lastStep = appliedStep;
+            if (!Number.isFinite(state.lavaMonster.screenX)) {
+                state.lavaMonster.screenX = state.lavaMonster.targetScreenX;
+            }
 
-            if (Math.abs(appliedStep) > 0.2) {
-                state.lavaMonster.direction = appliedStep > 0 ? 1 : -1;
+            if (state.lavaMonster.pauseMs > 0) {
+                state.lavaMonster.pauseMs = Math.max(0, state.lavaMonster.pauseMs - deltaMs);
+                state.lavaMonster.lastStep = 0;
+            }
+
+            if (state.lavaMonster.pauseMs <= 0) {
+                const maxStep = state.lavaMonster.speed * deltaSeconds;
+                const deltaX = state.lavaMonster.targetScreenX - state.lavaMonster.screenX;
+                const appliedStep = clamp(deltaX, -maxStep, maxStep);
+                state.lavaMonster.screenX = clamp(state.lavaMonster.screenX + appliedStep, bounds.min, bounds.max);
+                state.lavaMonster.lastStep = appliedStep;
+
+                if (Math.abs(state.lavaMonster.targetScreenX - state.lavaMonster.screenX) <= 3) {
+                    state.lavaMonster.targetScreenX = pickLavaMonsterTarget(monsterWidth);
+                    state.lavaMonster.pauseMs = randomBetween(420, 980);
+                    state.lavaMonster.speed = randomBetween(42, 76);
+                    state.lavaMonster.lastStep = 0;
+                }
+            } else {
+                state.lavaMonster.screenX = clamp(state.lavaMonster.screenX, bounds.min, bounds.max);
+            }
+
+            if (Math.abs(state.lavaMonster.lastStep) > 0.2) {
+                state.lavaMonster.direction = state.lavaMonster.lastStep > 0 ? 1 : -1;
             }
 
             state.flyers.forEach(function (flyer) {
@@ -1553,6 +1867,10 @@
 
         function updateSmoke(deltaMs) {
             if (!player) {
+                return;
+            }
+
+            if (state.isPaused || state.isQuestionActive || state.isGameOver) {
                 return;
             }
 
@@ -1797,6 +2115,7 @@
         function endRun() {
             state.isGameOver = true;
             state.isQuestionActive = false;
+            state.arrowHazards = [];
             state.dialogue.visible = false;
             hidePlayerDialogueBubble();
             updateMobileControlsVisibility();
@@ -1836,7 +2155,7 @@
                 clearInputState();
                 pauseAllTracks();
             } else if (!state.isMuted) {
-                requestMusic(state.musicTargetKey);
+                resumeMusicPlayback();
             }
 
             updateMobileControlsVisibility();
@@ -1855,16 +2174,22 @@
             dom.mobileControls.classList.toggle("hidden", !shouldShow);
         }
 
-        async function triggerQuestion() {
+        async function triggerQuestion(options) {
             if (state.isQuestionActive || state.isGameOver) {
                 return;
             }
 
-            const respawnTargetX = player.centerX;
+            const config = Object.assign({
+                respawnTargetX: player.centerX,
+                sinkPlayer: true
+            }, options);
+            const respawnTargetX = config.respawnTargetX;
             state.isQuestionActive = true;
+            state.arrowHazards = [];
+            resetArrowHazards(false);
             state.dialogue.visible = false;
             hidePlayerDialogueBubble();
-            setPlayerLavaState(true);
+            setPlayerLavaState(!!config.sinkPlayer);
             clearInputState();
             dom.cornerControls.classList.add("hidden");
             updateMobileControlsVisibility();
@@ -1906,7 +2231,7 @@
             state.cameraX = Math.max(0, player.centerX - canvas.width * 0.34);
         }
 
-        function update(deltaMs) {
+        function update(deltaMs, ambientDeltaMs, arrowDeltaMs) {
             const input = getMergedInput();
             const wasGrounded = player.isOnGround;
             const previousBottomY = player.bottomY;
@@ -1951,7 +2276,12 @@
                 state.dialogue.nearLavaReady = true;
             }
 
-            updateAmbient(deltaMs);
+            updateAmbient(ambientDeltaMs);
+
+            if (updateArrowHazards(arrowDeltaMs)) {
+                void triggerQuestion({ sinkPlayer: false });
+                return;
+            }
 
             if (player.bottomY >= getLavaSurfaceY() + 4) {
                 if (state.dev.enabled && state.dev.freezeLava) {
@@ -1986,6 +2316,7 @@
             drawCoins(timeMs);
             drawFlyers(timeMs);
             drawPlayer();
+            drawArrowHazards(timeMs);
             drawSmoke();
         }
 
@@ -1994,13 +2325,15 @@
                 return;
             }
 
-            const deltaMs = state.lastFrameTime
-                ? clamp(timeMs - state.lastFrameTime, 8, 33.34)
+            const rawDeltaMs = state.lastFrameTime
+                ? Math.min(50, Math.max(0, timeMs - state.lastFrameTime))
                 : 16.67;
+            const deltaMs = clamp(rawDeltaMs, 8, 33.34);
             state.lastFrameTime = timeMs;
 
             if (state.assetsReady && !state.isPaused && !state.isQuestionActive && !state.isGameOver) {
-                update(deltaMs);
+                state.sceneTimeMs += rawDeltaMs;
+                update(deltaMs, rawDeltaMs, rawDeltaMs);
             }
 
             if (state.assetsReady) {
@@ -2009,7 +2342,7 @@
             }
 
             updateMusic(deltaMs);
-            draw(timeMs);
+            draw(state.sceneTimeMs);
             renderPlayerDialogueBubble();
             state.rafId = window.requestAnimationFrame(frame);
         }

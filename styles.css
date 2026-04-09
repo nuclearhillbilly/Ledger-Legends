@@ -697,7 +697,7 @@ body.menu {
 
 .menu-runner-bubble-text {
     position: absolute;
-    inset: 22% 18% 41% 22%;
+    inset: 24% 21% 43% 25%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -713,6 +713,7 @@ body.menu {
     overflow-wrap: anywhere;
     word-break: break-word;
     white-space: normal;
+    transform-origin: center center;
 }
 
 .menu-monster-sprite {
@@ -849,7 +850,7 @@ canvas {
 
 .player-dialogue-text {
     position: absolute;
-    inset: 22% 18% 42% 22%;
+    inset: 24% 21% 44% 25%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -865,6 +866,7 @@ canvas {
     overflow-wrap: anywhere;
     word-break: break-word;
     white-space: normal;
+    transform-origin: center center;
 }
 
 .mobile-controls {
@@ -1373,7 +1375,7 @@ canvas {
     }
 
     .player-dialogue-text {
-        inset: 22% 18% 44% 23%;
+        inset: 24% 21% 46% 25%;
         font-size: 6.75px;
         line-height: 1.04;
     }
@@ -1430,7 +1432,7 @@ canvas {
     }
 
     .menu-runner-bubble-text {
-        inset: 23% 19% 43% 24%;
+        inset: 25% 22% 45% 26%;
         font-size: 6.5px;
         line-height: 1.04;
     }
@@ -1618,7 +1620,7 @@ canvas {
     }
 
     .menu-runner-bubble-text {
-        inset: 24% 20% 45% 24%;
+        inset: 26% 23% 47% 27%;
         font-size: 5.8px;
         line-height: 1.02;
     }
@@ -1741,6 +1743,7 @@ canvas {
     }
 
     .menu-runner-bubble-text {
+        inset: 26% 23% 48% 27%;
         font-size: 6px;
     }
 
