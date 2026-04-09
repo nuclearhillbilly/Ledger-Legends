@@ -1,5 +1,10 @@
 @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 
+:root {
+    --viewport-width: 100vw;
+    --viewport-height: 100dvh;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -31,11 +36,13 @@ body.menu {
     overflow: hidden;
     position: relative;
     color: var(--menu-text);
+    min-height: var(--viewport-height);
     background: linear-gradient(180deg, #f8d7b0 0%, #cf8b73 42%, #4f2745 100%);
 }
 
 body.game-screen {
     overflow: hidden;
+    min-height: var(--viewport-height);
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
@@ -48,6 +55,7 @@ body.game-screen {
 .menu-background {
     position: fixed;
     inset: 0;
+    min-height: var(--viewport-height);
     background: url("assets/menu-background.png") center center / cover no-repeat;
     pointer-events: none;
     filter: saturate(1.14) brightness(1.12);
@@ -512,7 +520,7 @@ body.menu {
 .menu-screen {
     position: relative;
     z-index: 3;
-    min-height: 100vh;
+    min-height: var(--viewport-height);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -656,58 +664,55 @@ body.menu {
     left: 0;
     right: 0;
     bottom: max(8px, env(safe-area-inset-bottom, 0px));
-    height: 200px;
-    overflow: hidden;
+    height: 232px;
+    overflow: visible;
     pointer-events: none;
-    z-index: 2;
+    z-index: 4;
 }
 
 .menu-runner-bubble {
     position: absolute;
     left: 0;
-    bottom: 120px;
-    max-width: 260px;
-    padding: 12px 16px;
-    border: 4px solid #fff7df;
-    background: rgba(15, 11, 11, 0.96);
-    color: #fff7df;
-    font-size: clamp(0.56rem, 0.9vw, 0.72rem);
-    line-height: 1.5;
-    letter-spacing: 0.06em;
-    text-align: center;
-    box-shadow:
-        0 5px 0 rgba(13, 10, 6, 0.95),
-        0 0 14px rgba(255, 228, 92, 0.24);
+    bottom: 92px;
+    width: clamp(214px, 22vw, 282px);
+    aspect-ratio: 3 / 2;
     opacity: 0;
+    pointer-events: none;
     transform-origin: center bottom;
     transition: opacity 160ms linear, transform 160ms ease-out;
+    z-index: 2;
 }
 
-.menu-runner-bubble::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: -14px;
-    width: 0;
-    height: 0;
-    transform: translateX(-50%);
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-top: 14px solid #fff7df;
+.menu-runner-bubble-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    filter: drop-shadow(0 10px 18px rgba(52, 32, 8, 0.24));
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
-.menu-runner-bubble::before {
-    content: "";
+.menu-runner-bubble-text {
     position: absolute;
-    left: 50%;
-    bottom: -9px;
-    width: 0;
-    height: 0;
-    transform: translateX(-50%);
-    border-left: 7px solid transparent;
-    border-right: 7px solid transparent;
-    border-top: 11px solid rgba(15, 11, 11, 0.96);
-    z-index: 1;
+    inset: 22% 18% 41% 22%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 2px 0;
+    color: #5b320d;
+    font-family: "Press Start 2P", "Lucida Console", monospace;
+    font-size: 8.25px;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    text-align: center;
+    text-shadow: 0 1px 0 rgba(255, 250, 226, 0.78);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
 }
 
 .menu-monster-sprite {
@@ -806,8 +811,8 @@ body.menu {
 
 canvas {
     display: block;
-    width: 100vw;
-    height: 100vh;
+    width: var(--viewport-width);
+    height: var(--viewport-height);
     background: #050816;
     touch-action: none;
 }
@@ -817,7 +822,7 @@ canvas {
     left: 0;
     top: 0;
     z-index: 6;
-    width: clamp(220px, 25vw, 320px);
+    width: clamp(276px, 31vw, 384px);
     aspect-ratio: 3 / 2;
     opacity: 0;
     visibility: hidden;
@@ -844,7 +849,7 @@ canvas {
 
 .player-dialogue-text {
     position: absolute;
-    inset: 18% 12% 34% 15%;
+    inset: 22% 18% 42% 22%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -852,14 +857,62 @@ canvas {
     padding: 2px 0;
     color: #5b320d;
     font-family: "Press Start 2P", "Lucida Console", monospace;
-    font-size: 12px;
-    line-height: 1.22;
-    letter-spacing: 0.03em;
+    font-size: 8.5px;
+    line-height: 1.08;
+    letter-spacing: 0.01em;
     text-align: center;
     text-shadow: 0 1px 0 rgba(255, 250, 226, 0.78);
     overflow-wrap: anywhere;
     word-break: break-word;
     white-space: normal;
+}
+
+.mobile-controls {
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left, 0px) + 12px);
+    right: max(12px, env(safe-area-inset-right, 0px) + 12px);
+    bottom: max(14px, env(safe-area-inset-bottom, 0px) + 14px);
+    z-index: 8;
+    display: none;
+    align-items: flex-end;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.mobile-move-cluster {
+    display: flex;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.touch-button {
+    min-width: 78px;
+    height: 78px;
+    padding: 0 16px;
+    border: 3px solid rgba(255, 228, 142, 0.72);
+    border-radius: 24px;
+    background: rgba(23, 17, 31, 0.76);
+    color: #fff3c2;
+    font-family: "Press Start 2P", "Lucida Console", monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 12px 24px rgba(0, 0, 0, 0.28);
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.touch-button-jump {
+    min-width: 102px;
+}
+
+.touch-button.is-active {
+    transform: translateY(2px) scale(0.98);
+    background: rgba(64, 37, 14, 0.9);
+    border-color: rgba(255, 228, 142, 0.92);
 }
 
 .hud {
@@ -1316,13 +1369,13 @@ canvas {
 
 @media (max-width: 720px) {
     .player-dialogue-bubble {
-        width: clamp(184px, 44vw, 240px);
+        width: clamp(216px, 50vw, 276px);
     }
 
     .player-dialogue-text {
-        inset: 20% 12% 36% 16%;
-        font-size: 9px;
-        line-height: 1.18;
+        inset: 22% 18% 44% 23%;
+        font-size: 6.75px;
+        line-height: 1.04;
     }
 
     .menu-screen {
@@ -1368,14 +1421,18 @@ canvas {
     }
 
     .menu-runner-lane {
-        height: 150px;
+        height: 172px;
     }
 
     .menu-runner-bubble {
-        bottom: 102px;
-        max-width: 200px;
-        padding: 10px 12px;
-        font-size: 0.54rem;
+        bottom: 76px;
+        width: clamp(184px, 44vw, 226px);
+    }
+
+    .menu-runner-bubble-text {
+        inset: 23% 19% 43% 24%;
+        font-size: 6.5px;
+        line-height: 1.04;
     }
 
     .menu-monster-sprite {
@@ -1442,9 +1499,9 @@ canvas {
         max-width: calc(100vw - 20px);
         white-space: normal;
         text-align: center;
-        font-size: 1.05rem;
-        line-height: 1.45;
-        padding: 14px 16px;
+        font-size: 0.92rem;
+        line-height: 1.35;
+        padding: 12px 14px;
     }
 
     .corner-controls {
@@ -1458,6 +1515,28 @@ canvas {
         height: 36px;
         padding: 0 12px;
         font-size: 0.76rem;
+    }
+
+    .mobile-controls {
+        left: max(10px, env(safe-area-inset-left, 0px) + 10px);
+        right: max(10px, env(safe-area-inset-right, 0px) + 10px);
+        bottom: max(12px, env(safe-area-inset-bottom, 0px) + 12px);
+    }
+
+    .mobile-move-cluster {
+        gap: 10px;
+    }
+
+    .touch-button {
+        min-width: 70px;
+        height: 70px;
+        padding: 0 12px;
+        border-radius: 22px;
+        font-size: 0.56rem;
+    }
+
+    .touch-button-jump {
+        min-width: 94px;
     }
 
     .scoreboard-current {
@@ -1484,22 +1563,157 @@ canvas {
     }
 
     .question-box {
-        width: min(96vw, 76vh, 620px);
+        width: min(96vw, 78dvh, 560px);
     }
 
     .question-scroll-content {
-        inset: 25% 15% 18% 15%;
-        gap: 10px;
+        inset: 24% 14% 17% 14%;
+        gap: 8px;
     }
 
     .question-box .option-button {
-        font-size: 0.95rem;
-        gap: 10px;
+        font-size: 0.84rem;
+        gap: 8px;
     }
 
     .feedback {
-        min-height: 58px;
+        min-height: 48px;
         margin-bottom: 6px;
+    }
+}
+
+@media (max-width: 520px) {
+    .menu-screen {
+        padding: 44px 12px 112px;
+    }
+
+    .menu-stack {
+        width: 94vw;
+        gap: 16px;
+        transform: none;
+    }
+
+    .menu-title-wrap {
+        transform: none;
+    }
+
+    .menu-title-image {
+        width: min(430px, 92vw);
+    }
+
+    .menu-action,
+    .menu-toggle-row {
+        font-size: 0.84rem;
+        line-height: 1.5;
+    }
+
+    .menu-runner-lane {
+        height: 150px;
+        bottom: max(6px, env(safe-area-inset-bottom, 0px));
+    }
+
+    .menu-runner-bubble {
+        bottom: 68px;
+        width: clamp(164px, 42vw, 198px);
+    }
+
+    .menu-runner-bubble-text {
+        inset: 24% 20% 45% 24%;
+        font-size: 5.8px;
+        line-height: 1.02;
+    }
+
+    .menu-monster-sprite {
+        width: clamp(96px, 24vw, 126px);
+    }
+
+    .menu-runner-sprite {
+        width: clamp(84px, 22vw, 112px);
+    }
+
+    .hud {
+        width: calc(100vw - 14px);
+        top: calc(env(safe-area-inset-top, 0px) + 8px);
+    }
+
+    .hud-line {
+        font-size: 0.74rem;
+        line-height: 1.28;
+        padding: 10px 12px;
+        border-radius: 12px;
+    }
+
+    .corner-controls {
+        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        right: calc(env(safe-area-inset-right, 0px) + 10px);
+    }
+
+    .corner-button {
+        min-width: 56px;
+        height: 34px;
+        padding: 0 10px;
+        font-size: 0.66rem;
+    }
+
+    .mobile-controls {
+        left: max(8px, env(safe-area-inset-left, 0px) + 8px);
+        right: max(8px, env(safe-area-inset-right, 0px) + 8px);
+        bottom: max(10px, env(safe-area-inset-bottom, 0px) + 10px);
+    }
+
+    .mobile-move-cluster {
+        gap: 8px;
+    }
+
+    .touch-button {
+        min-width: 62px;
+        height: 62px;
+        padding: 0 10px;
+        border-radius: 20px;
+        font-size: 0.48rem;
+    }
+
+    .touch-button-jump {
+        min-width: 84px;
+    }
+
+    .question-box {
+        width: min(98vw, 92dvh, 430px);
+    }
+
+    .question-scroll-content {
+        inset: 24.5% 12% 16.5% 12%;
+        gap: 7px;
+    }
+
+    .question-kicker {
+        font-size: 0.58rem;
+    }
+
+    .question-box h2 {
+        font-size: clamp(0.9rem, 4vw, 1.1rem);
+        line-height: 1.12;
+        max-width: 96%;
+    }
+
+    .question-box .option-button {
+        font-size: 0.74rem;
+        gap: 6px;
+    }
+
+    .question-box .option-number {
+        min-width: 1.4rem;
+    }
+
+    .feedback {
+        font-size: 0.76rem;
+        min-height: 40px;
+    }
+}
+
+@media (hover: none), (pointer: coarse) {
+    .mobile-controls {
+        display: flex;
     }
 }
 
@@ -1518,14 +1732,16 @@ canvas {
     }
 
     .menu-runner-lane {
-        height: 120px;
+        height: 138px;
     }
 
     .menu-runner-bubble {
-        bottom: 92px;
-        max-width: 176px;
-        padding: 8px 10px;
-        font-size: 0.46rem;
+        bottom: 72px;
+        width: clamp(170px, 18vw, 206px);
+    }
+
+    .menu-runner-bubble-text {
+        font-size: 6px;
     }
 
     .menu-monster-sprite {

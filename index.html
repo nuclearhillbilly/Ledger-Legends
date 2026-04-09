@@ -37,7 +37,10 @@
     </main>
 
     <div class="menu-runner-lane" aria-hidden="true">
-        <div id="menuRunnerBubble" class="menu-runner-bubble">Easy jump!</div>
+        <div id="menuRunnerBubble" class="menu-runner-bubble">
+            <img class="menu-runner-bubble-image" src="assets/dialogue bubble.png" alt="">
+            <span id="menuRunnerBubbleText" class="menu-runner-bubble-text">Easy jump!</span>
+        </div>
         <img id="menuMonster" class="menu-monster-sprite" src="assets/monster-lava.png" alt="">
         <img id="menuRunner" class="menu-runner-sprite" src="assets/player_run.png" alt="">
     </div>
@@ -135,8 +138,9 @@
         const runner = document.getElementById("menuRunner");
         const monster = document.getElementById("menuMonster");
         const bubble = document.getElementById("menuRunnerBubble");
+        const bubbleText = document.getElementById("menuRunnerBubbleText");
         const birds = Array.from(document.querySelectorAll(".menu-bird"));
-        if (!(runner && monster && bubble)) {
+        if (!(runner && monster && bubble && bubbleText)) {
             return;
         }
 
@@ -150,7 +154,7 @@
             "assets/birdsprite_wingdown.png"
         ];
 
-        playerFrames.concat(birdFrames).concat(["assets/monster-lava.png", "assets/UI_title.png"]).forEach(function (src) {
+        playerFrames.concat(birdFrames).concat(["assets/monster-lava.png", "assets/UI_title.png", "assets/dialogue bubble.png"]).forEach(function (src) {
             const image = new Image();
             image.src = src;
         });
@@ -188,6 +192,32 @@
             return Math.max(28, window.innerWidth - (runner.offsetWidth || 140) - 28);
         }
 
+        function fitMenuBubbleText(text) {
+            const isCompactViewport = window.innerWidth <= 720;
+            const baseFontSize = isCompactViewport ? 6.75 : 8.25;
+            const minFontSize = isCompactViewport ? 5.25 : 5.75;
+            let fontSize = baseFontSize;
+            let lineHeight = fontSize <= 6 ? 1.02 : fontSize <= 7 ? 1.06 : 1.1;
+            let letterSpacing = fontSize <= 6 ? "0" : "0.01em";
+
+            bubbleText.textContent = text;
+            bubbleText.style.fontSize = `${fontSize}px`;
+            bubbleText.style.lineHeight = String(lineHeight);
+            bubbleText.style.letterSpacing = letterSpacing;
+
+            while (
+                fontSize > minFontSize &&
+                (bubbleText.scrollHeight > bubbleText.clientHeight || bubbleText.scrollWidth > bubbleText.clientWidth)
+            ) {
+                fontSize -= 0.25;
+                lineHeight = fontSize <= 6 ? 1.01 : fontSize <= 7 ? 1.04 : 1.08;
+                letterSpacing = fontSize <= 6 ? "0" : "0.008em";
+                bubbleText.style.fontSize = `${fontSize}px`;
+                bubbleText.style.lineHeight = String(lineHeight);
+                bubbleText.style.letterSpacing = letterSpacing;
+            }
+        }
+
         function nextMenuDialogueLine() {
             if (!dialogueState.deck.length) {
                 dialogueState.deck = shuffleList(MENU_DIALOGUE_LINES);
@@ -206,7 +236,7 @@
             const line = dialogueState.deck.shift();
             dialogueState.lastLine = line;
             dialogueState.currentLine = line;
-            bubble.textContent = line;
+            fitMenuBubbleText(line);
             return line;
         }
 
@@ -215,7 +245,7 @@
             runner.style.transform = "translate3d(28px, 0, 0) scaleX(1)";
             monster.style.transform = "translate3d(0, 0, 0) scaleX(1)";
             bubble.style.opacity = "1";
-            bubble.textContent = dialogueState.currentLine;
+            fitMenuBubbleText(dialogueState.currentLine);
             bubble.style.transform = "translate3d(-6px, -2px, 0) scale(1)";
 
             birdStates.forEach(function (birdState, index) {

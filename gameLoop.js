@@ -116,8 +116,16 @@
     ];
     const PLAYER_DIALOGUE_VISIBLE_MS = 2500;
     const PLAYER_DIALOGUE_NEAR_LAVA_BUFFER = 78;
-    const PLAYER_DIALOGUE_BUBBLE_OFFSET_Y = 28;
-    const PLAYER_DIALOGUE_BUBBLE_ANCHOR_X = 0.24;
+    const PLAYER_DIALOGUE_BUBBLE_OFFSET_Y = 4;
+    const PLAYER_DIALOGUE_BUBBLE_TAIL_X = 0.2;
+    const PLAYER_DIALOGUE_HEAD_ANCHOR_RIGHT = 0.4;
+    const PLAYER_DIALOGUE_HEAD_ANCHOR_LEFT = 0.6;
+    const LAVA_MONSTER_MIN_WIDTH = 96;
+    const LAVA_MONSTER_MAX_WIDTH = 132;
+    const LAVA_MONSTER_CHASE_GAP_MIN = 116;
+    const LAVA_MONSTER_CHASE_GAP_MAX = 156;
+    const LAVA_MONSTER_FOREGROUND_HEIGHT = 48;
+    const MOBILE_TOUCH_BREAKPOINT = 900;
 
     function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
@@ -180,6 +188,32 @@
         return startSoon
             ? randomBetween(1800, 3600)
             : randomBetween(5200, 8600);
+    }
+
+    function getViewportSize() {
+        const viewport = window.visualViewport;
+        if (viewport && viewport.width > 0 && viewport.height > 0) {
+            return {
+                width: Math.max(320, Math.round(viewport.width)),
+                height: Math.max(320, Math.round(viewport.height))
+            };
+        }
+
+        return {
+            width: Math.max(320, Math.round(window.innerWidth)),
+            height: Math.max(320, Math.round(window.innerHeight))
+        };
+    }
+
+    function applyViewportSize() {
+        const viewport = getViewportSize();
+        document.documentElement.style.setProperty("--viewport-width", `${viewport.width}px`);
+        document.documentElement.style.setProperty("--viewport-height", `${viewport.height}px`);
+        return viewport;
+    }
+
+    function useTouchUILayout() {
+        return window.matchMedia("(pointer: coarse)").matches || getViewportSize().width <= MOBILE_TOUCH_BREAKPOINT;
     }
 
     function imageReady(image) {
@@ -265,6 +299,10 @@
             hudText: document.getElementById("hudText"),
             playerDialogueBubble: document.getElementById("playerDialogueBubble"),
             playerDialogueText: document.getElementById("playerDialogueText"),
+            mobileControls: document.getElementById("mobileControls"),
+            touchLeftButton: document.getElementById("touchLeftButton"),
+            touchRightButton: document.getElementById("touchRightButton"),
+            touchJumpButton: document.getElementById("touchJumpButton"),
             devToolbar: document.getElementById("devToolbar"),
             devToolbarLabel: document.getElementById("devToolbarLabel"),
             devSkipButton: document.getElementById("devSkipButton"),
@@ -300,7 +338,8 @@
             sounds: {}
         };
 
-        const platformManager = createPlatformManager(window.innerWidth, window.innerHeight);
+        const initialViewport = getViewportSize();
+        const platformManager = createPlatformManager(initialViewport.width, initialViewport.height);
         const questionEngine = new QuestionEngine(
             dom.questionBox,
             dom.questionText,
@@ -340,6 +379,7 @@
             smokeSpawnTimer: 0,
             lavaSputters: [],
             lavaSputterTimer: 0,
+            lavaMonster: null,
             activeAmbience: null,
             flyerSpawnTimer: 0,
             flyers: [],
@@ -443,11 +483,11 @@
 
             const textNode = dom.playerDialogueText;
             const isCompactViewport = window.innerWidth <= 720;
-            const baseFontSize = isCompactViewport ? 9 : 12;
-            const minFontSize = isCompactViewport ? 7 : 8;
+            const baseFontSize = isCompactViewport ? 6.75 : 8.5;
+            const minFontSize = isCompactViewport ? 5 : 5.75;
             let fontSize = baseFontSize;
-            let lineHeight = fontSize <= 9 ? 1.14 : 1.22;
-            let letterSpacing = fontSize <= 8 ? "0.01em" : "0.03em";
+            let lineHeight = fontSize <= 6 ? 1 : fontSize <= 7 ? 1.04 : 1.08;
+            let letterSpacing = fontSize <= 6 ? "0" : fontSize <= 7 ? "0.006em" : "0.01em";
 
             textNode.textContent = text;
             textNode.style.fontSize = `${fontSize}px`;
@@ -458,9 +498,9 @@
                 fontSize > minFontSize &&
                 (textNode.scrollHeight > textNode.clientHeight || textNode.scrollWidth > textNode.clientWidth)
             ) {
-                fontSize -= 0.5;
-                lineHeight = fontSize <= 8 ? 1.08 : fontSize <= 9 ? 1.12 : 1.18;
-                letterSpacing = fontSize <= 8 ? "0.01em" : "0.02em";
+                fontSize -= 0.25;
+                lineHeight = fontSize <= 6 ? 1 : fontSize <= 7 ? 1.03 : 1.07;
+                letterSpacing = fontSize <= 6 ? "0" : fontSize <= 7 ? "0.004em" : "0.008em";
                 textNode.style.fontSize = `${fontSize}px`;
                 textNode.style.lineHeight = String(lineHeight);
                 textNode.style.letterSpacing = letterSpacing;
@@ -576,9 +616,12 @@
             const bounds = player.getRenderBounds(screenX, screenY);
             const bubbleWidth = bubble.offsetWidth || 220;
             const bubbleHeight = bubble.offsetHeight || 146;
-            const anchorX = bounds.x + (bounds.width * 0.5);
+            const headAnchorRatio = player.facing === -1
+                ? PLAYER_DIALOGUE_HEAD_ANCHOR_LEFT
+                : PLAYER_DIALOGUE_HEAD_ANCHOR_RIGHT;
+            const anchorX = bounds.x + (bounds.width * headAnchorRatio);
             const bubbleX = clamp(
-                anchorX - (bubbleWidth * PLAYER_DIALOGUE_BUBBLE_ANCHOR_X),
+                anchorX - (bubbleWidth * PLAYER_DIALOGUE_BUBBLE_TAIL_X),
                 12,
                 canvas.width - bubbleWidth - 12
             );
@@ -591,6 +634,23 @@
             bubble.classList.add("is-visible");
             bubble.setAttribute("aria-hidden", "false");
             bubble.style.transform = `translate3d(${Math.round(bubbleX)}px, ${Math.round(bubbleY)}px, 0)`;
+        }
+
+        function getLavaMonsterWidth() {
+            return clamp(canvas.width * 0.105, LAVA_MONSTER_MIN_WIDTH, LAVA_MONSTER_MAX_WIDTH);
+        }
+
+        function resetLavaMonster() {
+            state.lavaMonster = {
+                screenX: NaN,
+                direction: 1,
+                speed: randomBetween(104, 148),
+                chaseGap: randomBetween(LAVA_MONSTER_CHASE_GAP_MIN, LAVA_MONSTER_CHASE_GAP_MAX),
+                swaySeed: randomBetween(0, Math.PI * 2),
+                lastStep: 0,
+                bobSeed: randomBetween(0, Math.PI * 2),
+                submergeDepth: randomBetween(34, 40)
+            };
         }
 
         function updateDevToolbar() {
@@ -715,8 +775,16 @@
         }
 
         function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            const viewport = applyViewportSize();
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            if (player) {
+                platformManager.resize(canvas.width, canvas.height);
+                state.cameraX = Math.max(0, player.centerX - canvas.width * 0.34);
+            }
+
+            updateMobileControlsVisibility();
         }
 
         function hideAllOverlays() {
@@ -729,6 +797,15 @@
             state.touch.left = false;
             state.touch.right = false;
             state.jumpQueued = false;
+            if (dom.touchLeftButton) {
+                dom.touchLeftButton.classList.remove("is-active");
+            }
+            if (dom.touchRightButton) {
+                dom.touchRightButton.classList.remove("is-active");
+            }
+            if (dom.touchJumpButton) {
+                dom.touchJumpButton.classList.remove("is-active");
+            }
             Object.keys(state.keys).forEach(function (key) {
                 state.keys[key] = false;
             });
@@ -906,6 +983,7 @@
                 coin: ["assets/gold_coin.png"],
                 lavaRiver: ["assets/river-lava.png"],
                 lava: ["assets/lava.png"],
+                monsterLava: ["assets/monster-lava.png"],
                 birdUp: ["assets/BirdSprite_WingsUp.png", "assets/birdsprite_wingsup.png"],
                 birdDown: ["assets/BirdSprite_WingDown.png", "assets/birdsprite_wingdown.png"],
                 batUp: ["assets/bat-up.png"],
@@ -970,6 +1048,7 @@
             state.smokeSpawnTimer = 0;
             state.lavaSputters = [];
             state.lavaSputterTimer = 0;
+            resetLavaMonster();
             state.flyers = [];
             state.activeAmbience = null;
             state.flyerSpawnTimer = randomBetween(1400, 2800);
@@ -986,6 +1065,7 @@
             resetPlayerDialogue(true);
             hideAllOverlays();
             dom.cornerControls.classList.remove("hidden");
+            updateMobileControlsVisibility();
             dom.summaryInitials.value = "";
             dom.summarySaveButton.disabled = false;
             updateHud();
@@ -1086,6 +1166,50 @@
                 ctx.fillStyle = lavaGradient;
                 ctx.fillRect(0, lavaY, canvas.width, canvas.height - lavaY);
             }
+        }
+
+        function drawLavaForeground(timeMs) {
+            const lavaY = getLavaSurfaceY();
+            const riverImage = assets.images.lavaRiver;
+            const lavaImage = assets.images.lava;
+
+            ctx.save();
+            ctx.globalAlpha = 0.96;
+
+            if (imageReady(riverImage)) {
+                const drawWidth = canvas.width + 120;
+                const flowOffset = ((timeMs || 0) * 0.08) % drawWidth;
+
+                for (let offsetX = -drawWidth; offsetX < canvas.width + drawWidth; offsetX += drawWidth - 2) {
+                    ctx.drawImage(
+                        riverImage,
+                        0,
+                        LAVA_SOURCE_TOP,
+                        riverImage.naturalWidth,
+                        Math.min(120, LAVA_SOURCE_HEIGHT),
+                        offsetX - flowOffset,
+                        lavaY,
+                        drawWidth,
+                        LAVA_MONSTER_FOREGROUND_HEIGHT
+                    );
+                }
+            } else if (imageReady(lavaImage)) {
+                const scale = Math.max(canvas.width / lavaImage.naturalWidth, LAVA_MONSTER_FOREGROUND_HEIGHT / lavaImage.naturalHeight);
+                const drawWidth = lavaImage.naturalWidth * scale;
+                const flowOffset = ((timeMs || 0) * 0.09) % drawWidth;
+
+                for (let offsetX = -drawWidth; offsetX < canvas.width + drawWidth; offsetX += drawWidth - 2) {
+                    ctx.drawImage(lavaImage, offsetX - flowOffset, lavaY, drawWidth, LAVA_MONSTER_FOREGROUND_HEIGHT);
+                }
+            } else {
+                const lavaGradient = ctx.createLinearGradient(0, lavaY, 0, lavaY + LAVA_MONSTER_FOREGROUND_HEIGHT);
+                lavaGradient.addColorStop(0, "rgba(251, 146, 60, 0.96)");
+                lavaGradient.addColorStop(1, "rgba(194, 65, 12, 0.96)");
+                ctx.fillStyle = lavaGradient;
+                ctx.fillRect(0, lavaY, canvas.width, LAVA_MONSTER_FOREGROUND_HEIGHT);
+            }
+
+            ctx.restore();
         }
 
         function updateLavaSputters(deltaMs) {
@@ -1232,6 +1356,10 @@
                 state.flyerSpawnTimer = randomBetween(1600, 3000);
             }
 
+            if (!state.lavaMonster) {
+                resetLavaMonster();
+            }
+
             state.flyerSpawnTimer -= deltaMs;
             if (state.flyerSpawnTimer <= 0 && state.flyers.length < 6) {
                 spawnFlyers(levelInfo.config.ambience);
@@ -1239,6 +1367,37 @@
             }
 
             const deltaSeconds = deltaMs / 1000;
+            const monsterWidth = getLavaMonsterWidth();
+            const minScreenX = monsterWidth * 0.52;
+            const playerScreenX = player
+                ? player.centerX - state.cameraX
+                : canvas.width * 0.34;
+            const maxScreenX = Math.max(
+                minScreenX,
+                playerScreenX - Math.max(monsterWidth * 0.82, state.lavaMonster.chaseGap * 0.72)
+            );
+            const swayOffset = Math.sin((state.lastFrameTime || 0) * 0.0032 + state.lavaMonster.swaySeed) *
+                Math.min(8, state.lavaMonster.chaseGap * 0.05);
+            const targetScreenX = clamp(
+                playerScreenX - state.lavaMonster.chaseGap + swayOffset,
+                minScreenX,
+                maxScreenX
+            );
+
+            if (!Number.isFinite(state.lavaMonster.screenX)) {
+                state.lavaMonster.screenX = targetScreenX;
+            }
+
+            const maxStep = state.lavaMonster.speed * deltaSeconds;
+            const deltaX = targetScreenX - state.lavaMonster.screenX;
+            const appliedStep = clamp(deltaX, -maxStep, maxStep);
+            state.lavaMonster.screenX = clamp(state.lavaMonster.screenX + appliedStep, minScreenX, maxScreenX);
+            state.lavaMonster.lastStep = appliedStep;
+
+            if (Math.abs(appliedStep) > 0.2) {
+                state.lavaMonster.direction = appliedStep > 0 ? 1 : -1;
+            }
+
             state.flyers.forEach(function (flyer) {
                 flyer.x += flyer.vx * deltaSeconds;
             });
@@ -1298,6 +1457,40 @@
                 ctx.fillStyle = flyer.type === "bat" ? "#2f2338" : "#ffffff";
                 ctx.fillRect(screenX, flyer.y, flyer.width * 0.5, flyer.height * 0.24);
             });
+        }
+
+        function drawLavaMonster(timeMs) {
+            if (!state.lavaMonster) {
+                return;
+            }
+
+            const monsterImage = assets.images.monsterLava;
+            if (!imageReady(monsterImage)) {
+                return;
+            }
+
+            const width = getLavaMonsterWidth();
+            const height = width;
+            const screenX = state.lavaMonster.screenX - (width * 0.5);
+            const bob = Math.sin((timeMs || 0) / 320 + state.lavaMonster.bobSeed) * 3;
+            const strideStrength = Math.abs(state.lavaMonster.lastStep) > 0.2 ? 2.2 : 1.1;
+            const stride = Math.abs(Math.sin((timeMs || 0) / 180)) * strideStrength;
+            const drawY = getLavaSurfaceY() - height + state.lavaMonster.submergeDepth + bob + stride;
+
+            ctx.save();
+            ctx.globalAlpha = 0.98;
+            ctx.shadowColor = "rgba(255, 120, 24, 0.42)";
+            ctx.shadowBlur = 24;
+
+            if (state.lavaMonster.direction < 0) {
+                ctx.translate(screenX + width, drawY);
+                ctx.scale(-1, 1);
+                ctx.drawImage(monsterImage, 0, 0, width, height);
+            } else {
+                ctx.drawImage(monsterImage, screenX, drawY, width, height);
+            }
+
+            ctx.restore();
         }
 
         function drawPlayer() {
@@ -1606,6 +1799,7 @@
             state.isQuestionActive = false;
             state.dialogue.visible = false;
             hidePlayerDialogueBubble();
+            updateMobileControlsVisibility();
             pauseAllTracks();
             showSummary();
         }
@@ -1644,6 +1838,21 @@
             } else if (!state.isMuted) {
                 requestMusic(state.musicTargetKey);
             }
+
+            updateMobileControlsVisibility();
+        }
+
+        function updateMobileControlsVisibility() {
+            if (!dom.mobileControls) {
+                return;
+            }
+
+            const shouldShow = useTouchUILayout() &&
+                !state.isPaused &&
+                !state.isQuestionActive &&
+                !state.isGameOver;
+
+            dom.mobileControls.classList.toggle("hidden", !shouldShow);
         }
 
         async function triggerQuestion() {
@@ -1658,6 +1867,7 @@
             setPlayerLavaState(true);
             clearInputState();
             dom.cornerControls.classList.add("hidden");
+            updateMobileControlsVisibility();
 
             if (state.dev.enabled && state.dev.skipQuestions) {
                 state.questionsAnswered += 1;
@@ -1666,6 +1876,7 @@
                 dom.cornerControls.classList.remove("hidden");
                 respawnPlayer(respawnTargetX);
                 updateHud();
+                updateMobileControlsVisibility();
                 logDev("Skipped question and respawned safely.");
                 return;
             }
@@ -1685,6 +1896,7 @@
             }
 
             updateHud();
+            updateMobileControlsVisibility();
         }
 
         function updateWorldMetrics() {
@@ -1767,6 +1979,8 @@
 
             drawBackground();
             drawLava(timeMs);
+            drawLavaMonster(timeMs);
+            drawLavaForeground(timeMs);
             drawLavaSputters();
             drawPlatforms();
             drawCoins(timeMs);
@@ -1872,55 +2086,64 @@
             state.keys[event.code] = false;
         }
 
-        function updateTouchDirection(clientX) {
-            const rect = canvas.getBoundingClientRect();
-            const relativeX = clientX - rect.left;
-            const midpoint = rect.width / 2;
-            state.touch.left = relativeX < midpoint;
-            state.touch.right = relativeX >= midpoint;
-        }
-
         function handleTouchStart(event) {
             event.preventDefault();
             unlockAudio();
-
-            if (state.isPaused || state.isQuestionActive || state.isGameOver) {
-                return;
-            }
-
-            const touch = event.touches[0];
-            if (!touch) {
-                return;
-            }
-
-            updateTouchDirection(touch.clientX);
-            state.jumpQueued = true;
         }
 
         function handleTouchMove(event) {
             event.preventDefault();
-            if (state.isPaused || state.isQuestionActive || state.isGameOver) {
-                return;
-            }
-
-            const touch = event.touches[0];
-            if (!touch) {
-                return;
-            }
-
-            updateTouchDirection(touch.clientX);
         }
 
         function handleTouchEnd(event) {
             event.preventDefault();
-            state.touch.left = false;
-            state.touch.right = false;
+        }
+
+        function bindTouchControlButton(button, onPress, onRelease) {
+            if (!button) {
+                return;
+            }
+
+            function handlePress(event) {
+                event.preventDefault();
+                unlockAudio();
+
+                if (state.isPaused || state.isQuestionActive || state.isGameOver) {
+                    return;
+                }
+
+                button.classList.add("is-active");
+                if (typeof onPress === "function") {
+                    onPress();
+                }
+            }
+
+            function handleRelease(event) {
+                event.preventDefault();
+                button.classList.remove("is-active");
+                if (typeof onRelease === "function") {
+                    onRelease();
+                }
+            }
+
+            button.addEventListener("pointerdown", handlePress);
+            button.addEventListener("pointerup", handleRelease);
+            button.addEventListener("pointercancel", handleRelease);
+            button.addEventListener("pointerleave", handleRelease);
+            button.addEventListener("lostpointercapture", handleRelease);
+            button.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
         }
 
         function bindEvents() {
             window.addEventListener("keydown", handleKeyDown);
             window.addEventListener("keyup", handleKeyUp);
             window.addEventListener("resize", resizeCanvas);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener("resize", resizeCanvas);
+                window.visualViewport.addEventListener("scroll", resizeCanvas);
+            }
             window.addEventListener("blur", function () {
                 if (!state.isGameOver && !state.isQuestionActive) {
                     togglePause(true);
@@ -1932,6 +2155,19 @@
             canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
             canvas.addEventListener("touchcancel", handleTouchEnd, { passive: false });
             canvas.addEventListener("mousedown", unlockAudio);
+            bindTouchControlButton(dom.touchLeftButton, function () {
+                state.touch.left = true;
+            }, function () {
+                state.touch.left = false;
+            });
+            bindTouchControlButton(dom.touchRightButton, function () {
+                state.touch.right = true;
+            }, function () {
+                state.touch.right = false;
+            });
+            bindTouchControlButton(dom.touchJumpButton, function () {
+                state.jumpQueued = true;
+            }, function () {});
 
             dom.pauseToggleButton.addEventListener("click", function () {
                 unlockAudio();
