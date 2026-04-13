@@ -134,6 +134,11 @@
     const ARROW_HAZARD_START_METERS = 1000;
     const ARROW_HAZARD_WIDTH = 112;
     const ARROW_HAZARD_HEIGHT = 52;
+    const ARROW_HAZARD_COLLISION_INSET_X = 0.06;
+    const ARROW_HAZARD_COLLISION_INSET_Y = 0.16;
+    const ARROW_FLAME_LEVEL_NAME = "Mushroom";
+    const IMAGE_ALPHA_THRESHOLD = 10;
+    const imageOpaqueBoundsCache = new WeakMap();
 
     function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
@@ -141,6 +146,24 @@
 
     function randomBetween(min, max) {
         return min + Math.random() * (max - min);
+    }
+
+    function intersectBounds(a, b) {
+        const left = Math.max(a.left, b.left);
+        const right = Math.min(a.right, b.right);
+        const top = Math.max(a.top, b.top);
+        const bottom = Math.min(a.bottom, b.bottom);
+
+        if (left >= right || top >= bottom) {
+            return null;
+        }
+
+        return {
+            left: left,
+            right: right,
+            top: top,
+            bottom: bottom
+        };
     }
 
     function shuffleList(list) {
@@ -226,6 +249,103 @@
 
     function imageReady(image) {
         return !!(image && image.complete && image.naturalWidth > 0);
+    }
+
+    // Trim PNG padding once so collisions line up with the art instead of the transparent canvas.
+    function getImageOpaqueBounds(image) {
+        if (!imageReady(image)) {
+            return null;
+        }
+
+        const cachedBounds = imageOpaqueBoundsCache.get(image);
+        if (cachedBounds) {
+            return cachedBounds;
+        }
+
+        const fullBounds = {
+            left: 0,
+            top: 0,
+            right: image.naturalWidth - 1,
+            bottom: image.naturalHeight - 1,
+            width: image.naturalWidth,
+            height: image.naturalHeight
+        };
+        const scanCanvas = document.createElement("canvas");
+        scanCanvas.width = image.naturalWidth;
+        scanCanvas.height = image.naturalHeight;
+        const scanContext = scanCanvas.getContext("2d", { willReadFrequently: true });
+
+        if (!scanContext) {
+            imageOpaqueBoundsCache.set(image, fullBounds);
+            return fullBounds;
+        }
+
+        scanContext.clearRect(0, 0, scanCanvas.width, scanCanvas.height);
+        scanContext.drawImage(image, 0, 0);
+
+        let imageData;
+        try {
+            imageData = scanContext.getImageData(0, 0, scanCanvas.width, scanCanvas.height).data;
+        } catch (error) {
+            imageOpaqueBoundsCache.set(image, fullBounds);
+            return fullBounds;
+        }
+
+        let minX = scanCanvas.width;
+        let minY = scanCanvas.height;
+        let maxX = -1;
+        let maxY = -1;
+
+        for (let index = 3; index < imageData.length; index += 4) {
+            if (imageData[index] <= IMAGE_ALPHA_THRESHOLD) {
+                continue;
+            }
+
+            const pixelIndex = (index - 3) / 4;
+            const x = pixelIndex % scanCanvas.width;
+            const y = Math.floor(pixelIndex / scanCanvas.width);
+
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+
+        scanCanvas.width = 0;
+        scanCanvas.height = 0;
+
+        const bounds = maxX < 0
+            ? fullBounds
+            : {
+                left: minX,
+                top: minY,
+                right: maxX,
+                bottom: maxY,
+                width: maxX - minX + 1,
+                height: maxY - minY + 1
+            };
+
+        imageOpaqueBoundsCache.set(image, bounds);
+        return bounds;
+    }
+
+    function getScaledOpaqueBounds(image, destinationBounds) {
+        const opaqueBounds = getImageOpaqueBounds(image);
+        if (!opaqueBounds) {
+            return null;
+        }
+
+        const sourceWidth = image.naturalWidth || opaqueBounds.width || 1;
+        const sourceHeight = image.naturalHeight || opaqueBounds.height || 1;
+        const scaleX = destinationBounds.width / sourceWidth;
+        const scaleY = destinationBounds.height / sourceHeight;
+
+        return {
+            left: destinationBounds.x + opaqueBounds.left * scaleX,
+            right: destinationBounds.x + (opaqueBounds.right + 1) * scaleX,
+            top: destinationBounds.y + opaqueBounds.top * scaleY,
+            bottom: destinationBounds.y + (opaqueBounds.bottom + 1) * scaleY
+        };
     }
 
     function loadImageCandidates(candidates) {
@@ -726,16 +846,25 @@
 
         function getArrowHazardDimensions() {
             const arrowImage = assets.images.arrow;
-            if (imageReady(arrowImage) && arrowImage.naturalWidth > 0 && arrowImage.naturalHeight > 0) {
+            const opaqueBounds = getImageOpaqueBounds(arrowImage);
+
+            if (opaqueBounds && opaqueBounds.width > 0 && opaqueBounds.height > 0) {
+                const scale = Math.min(
+                    ARROW_HAZARD_WIDTH / opaqueBounds.width,
+                    ARROW_HAZARD_HEIGHT / opaqueBounds.height
+                );
+
                 return {
-                    width: Math.round(ARROW_HAZARD_HEIGHT * (arrowImage.naturalWidth / arrowImage.naturalHeight)),
-                    height: ARROW_HAZARD_HEIGHT
+                    width: Math.max(40, Math.round(opaqueBounds.width * scale)),
+                    height: Math.max(18, Math.round(opaqueBounds.height * scale)),
+                    sourceBounds: opaqueBounds
                 };
             }
 
             return {
                 width: ARROW_HAZARD_WIDTH,
-                height: ARROW_HAZARD_HEIGHT
+                height: ARROW_HAZARD_HEIGHT,
+                sourceBounds: null
             };
         }
 
@@ -765,22 +894,58 @@
         function createArrowHazard() {
             const size = getArrowHazardDimensions();
             return {
-                x: canvas.width + size.width + randomBetween(28, 72),
+                worldX: state.cameraX + canvas.width + size.width + randomBetween(
+                    Math.max(72, canvas.width * 0.18),
+                    Math.max(140, canvas.width * 0.34)
+                ),
                 y: pickArrowLaneY(size.height),
                 width: size.width,
                 height: size.height,
                 direction: -1,
-                speed: getArrowSpeed(state.distanceMeters)
+                speed: getArrowSpeed(state.distanceMeters),
+                sourceBounds: size.sourceBounds || null
             };
         }
 
-        function getPlayerScreenBounds() {
+        function getPlayerArrowCollisionBounds() {
             const screenX = player.x - state.cameraX;
-            return {
+            const bodyBounds = {
                 left: screenX + 6,
                 right: screenX + player.width - 6,
                 top: player.hitboxTopY + 4,
                 bottom: player.bottomY - 4
+            };
+            const spriteBounds = getScaledOpaqueBounds(
+                player.getCurrentSprite(),
+                player.getRenderBounds(screenX, player.y)
+            );
+
+            if (!spriteBounds) {
+                return bodyBounds;
+            }
+
+            return intersectBounds(bodyBounds, {
+                left: spriteBounds.left + 2,
+                right: spriteBounds.right - 2,
+                top: spriteBounds.top + 2,
+                bottom: spriteBounds.bottom - 4
+            }) || bodyBounds;
+        }
+
+        function getArrowHazardScreenX(hazard) {
+            return hazard.worldX - state.cameraX;
+        }
+
+        function getArrowHazardCollisionBounds(hazard) {
+            const screenX = getArrowHazardScreenX(hazard);
+            const horizontalInset = Math.max(2, hazard.width * ARROW_HAZARD_COLLISION_INSET_X);
+            const verticalInset = Math.max(2, hazard.height * ARROW_HAZARD_COLLISION_INSET_Y);
+
+            return {
+                left: screenX + horizontalInset,
+                right: screenX + hazard.width - horizontalInset,
+                top: hazard.y + verticalInset,
+                bottom: hazard.y + hazard.height - verticalInset
             };
         }
 
@@ -789,13 +954,8 @@
                 return false;
             }
 
-            const playerBounds = getPlayerScreenBounds();
-            const hazardBounds = {
-                left: hazard.x + 4,
-                right: hazard.x + hazard.width - 4,
-                top: hazard.y + 4,
-                bottom: hazard.y + hazard.height - 4
-            };
+            const playerBounds = getPlayerArrowCollisionBounds();
+            const hazardBounds = getArrowHazardCollisionBounds(hazard);
 
             return !(
                 playerBounds.right <= hazardBounds.left ||
@@ -810,6 +970,8 @@
                 return false;
             }
 
+            const stepDeltaMs = clamp(deltaMs || 16.67, 8, 33.34);
+
             if (state.distanceMeters < ARROW_HAZARD_START_METERS) {
                 if (state.arrowHazards.length) {
                     state.arrowHazards = [];
@@ -820,7 +982,7 @@
                 return false;
             }
 
-            state.arrowSpawnTimer -= deltaMs;
+            state.arrowSpawnTimer -= stepDeltaMs;
             const maxOnScreen = getArrowMaxOnScreen(state.distanceMeters);
 
             if (state.arrowSpawnTimer <= 0) {
@@ -832,11 +994,11 @@
                 }
             }
 
-            const deltaSeconds = deltaMs / 1000;
+            const deltaSeconds = stepDeltaMs / 1000;
             let hitArrow = false;
 
             state.arrowHazards.forEach(function (hazard) {
-                hazard.x += hazard.direction * hazard.speed * deltaSeconds;
+                hazard.worldX += hazard.direction * hazard.speed * deltaSeconds;
 
                 if (!hitArrow && arrowHazardOverlapsPlayer(hazard)) {
                     hitArrow = true;
@@ -845,9 +1007,10 @@
             });
 
             state.arrowHazards = state.arrowHazards.filter(function (hazard) {
+                const screenX = getArrowHazardScreenX(hazard);
                 return !hazard.hit &&
-                    hazard.x < canvas.width + hazard.width + 80 &&
-                    hazard.x + hazard.width > -hazard.width - 80;
+                    screenX < canvas.width + hazard.width + 80 &&
+                    screenX + hazard.width > -hazard.width - 80;
             });
 
             if (hitArrow) {
@@ -857,21 +1020,116 @@
             return hitArrow;
         }
 
-        function drawRetroArrowHazard(hazard, timeMs) {
+        function drawArrowTipFlame(hazard, timeMs) {
+            const flicker = 0.78 + 0.22 * Math.sin((timeMs || 0) * 0.026 + hazard.y * 0.11);
+            const flameLength = Math.max(14, hazard.width * 0.22);
+            const flameHeight = Math.max(10, hazard.height * 0.82);
+            const tipX = hazard.width - Math.max(6, hazard.width * 0.08);
+            const centerY = hazard.height * 0.5;
+            const glow = ctx.createRadialGradient(
+                tipX - flameLength * 0.18,
+                centerY,
+                0,
+                tipX - flameLength * 0.18,
+                centerY,
+                flameLength
+            );
+
+            glow.addColorStop(0, `rgba(255, 247, 194, ${0.78 * flicker})`);
+            glow.addColorStop(0.38, `rgba(255, 170, 62, ${0.58 * flicker})`);
+            glow.addColorStop(1, "rgba(255, 82, 24, 0)");
+
+            ctx.save();
+            ctx.globalCompositeOperation = "screen";
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.ellipse(
+                tipX - flameLength * 0.12,
+                centerY,
+                flameLength,
+                flameHeight * 0.56,
+                0,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+
+            ctx.globalCompositeOperation = "source-over";
+            ctx.fillStyle = `rgba(255, 132, 38, ${0.82 * flicker})`;
+            ctx.beginPath();
+            ctx.moveTo(tipX - flameLength, centerY);
+            ctx.quadraticCurveTo(
+                tipX - flameLength * 0.34,
+                centerY - flameHeight * 0.54,
+                tipX,
+                centerY
+            );
+            ctx.quadraticCurveTo(
+                tipX - flameLength * 0.4,
+                centerY + flameHeight * 0.54,
+                tipX - flameLength,
+                centerY
+            );
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = `rgba(255, 242, 184, ${0.76 * flicker})`;
+            ctx.beginPath();
+            ctx.moveTo(tipX - flameLength * 0.58, centerY);
+            ctx.quadraticCurveTo(
+                tipX - flameLength * 0.22,
+                centerY - flameHeight * 0.24,
+                tipX - flameLength * 0.06,
+                centerY
+            );
+            ctx.quadraticCurveTo(
+                tipX - flameLength * 0.28,
+                centerY + flameHeight * 0.24,
+                tipX - flameLength * 0.58,
+                centerY
+            );
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawRetroArrowHazard(hazard, timeMs, showTipFlame) {
             const arrowImage = assets.images.arrow;
+            const screenX = getArrowHazardScreenX(hazard);
+
             if (imageReady(arrowImage)) {
+                const sourceBounds = hazard.sourceBounds || getImageOpaqueBounds(arrowImage);
+                const sourceX = sourceBounds ? sourceBounds.left : 0;
+                const sourceY = sourceBounds ? sourceBounds.top : 0;
+                const sourceWidth = sourceBounds ? sourceBounds.width : arrowImage.naturalWidth;
+                const sourceHeight = sourceBounds ? sourceBounds.height : arrowImage.naturalHeight;
+
                 ctx.save();
                 ctx.imageSmoothingEnabled = false;
                 ctx.shadowColor = "rgba(28, 16, 8, 0.26)";
                 ctx.shadowBlur = 14;
-                ctx.translate(Math.round(hazard.x), Math.round(hazard.y));
+                ctx.translate(Math.round(screenX), Math.round(hazard.y));
 
                 if (hazard.direction < 0) {
                     ctx.translate(hazard.width, 0);
                     ctx.scale(-1, 1);
                 }
 
-                ctx.drawImage(arrowImage, 0, 0, hazard.width, hazard.height);
+                if (showTipFlame) {
+                    drawArrowTipFlame(hazard, timeMs);
+                }
+
+                ctx.drawImage(
+                    arrowImage,
+                    sourceX,
+                    sourceY,
+                    sourceWidth,
+                    sourceHeight,
+                    0,
+                    0,
+                    hazard.width,
+                    hazard.height
+                );
                 ctx.restore();
                 return;
             }
@@ -927,11 +1185,15 @@
             };
 
             ctx.save();
-            ctx.translate(Math.round(hazard.x), Math.round(hazard.y));
+            ctx.translate(Math.round(screenX), Math.round(hazard.y));
 
             if (hazard.direction < 0) {
                 ctx.translate(hazard.width, 0);
                 ctx.scale(-1, 1);
+            }
+
+            if (showTipFlame) {
+                drawArrowTipFlame(hazard, timeMs);
             }
 
             drawArrowBody(1.5, 1.5, true);
@@ -940,8 +1202,10 @@
         }
 
         function drawArrowHazards(timeMs) {
+            const showTipFlame = getCurrentLevelInfo(state.distanceMeters).config.name === ARROW_FLAME_LEVEL_NAME;
+
             state.arrowHazards.forEach(function (hazard) {
-                drawRetroArrowHazard(hazard, timeMs);
+                drawRetroArrowHazard(hazard, timeMs, showTipFlame);
             });
         }
 
@@ -2247,7 +2511,7 @@
             state.cameraX = Math.max(0, player.centerX - canvas.width * 0.34);
         }
 
-        function update(deltaMs, ambientDeltaMs, arrowDeltaMs) {
+        function update(deltaMs, ambientDeltaMs) {
             const input = getMergedInput();
             const wasGrounded = player.isOnGround;
             const previousBottomY = player.bottomY;
@@ -2294,7 +2558,7 @@
 
             updateAmbient(ambientDeltaMs);
 
-            if (updateArrowHazards(arrowDeltaMs)) {
+            if (updateArrowHazards(deltaMs)) {
                 void triggerQuestion({ sinkPlayer: false });
                 return;
             }
@@ -2349,7 +2613,7 @@
 
             if (state.assetsReady && !state.isPaused && !state.isQuestionActive && !state.isGameOver) {
                 state.sceneTimeMs += rawDeltaMs;
-                update(deltaMs, rawDeltaMs, rawDeltaMs);
+                update(deltaMs, rawDeltaMs);
             }
 
             if (state.assetsReady) {
