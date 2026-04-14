@@ -1,4 +1,5 @@
 (function () {
+    const ANSWER_FEEDBACK_VISIBLE_MS = 10000;
     const QUESTION_BANK = [
         {
             id: "q1",
@@ -318,7 +319,7 @@
                     isCorrect: isCorrect,
                     question: question
                 });
-            }, 1250);
+            }, ANSWER_FEEDBACK_VISIBLE_MS);
         }
 
         handleKeydown(event) {
