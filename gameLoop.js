@@ -121,6 +121,7 @@
     const PLAYER_DIALOGUE_FACE_ANCHOR_LEFT = 0.42;
     const PLAYER_DIALOGUE_FACE_ANCHOR_Y = 0.36;
     const PLAYER_DIALOGUE_BUBBLE_TIP_X = 0.17;
+    const PLAYER_DIALOGUE_LEFT_SIDE_TIP_X = 1 - PLAYER_DIALOGUE_BUBBLE_TIP_X;
     const PLAYER_DIALOGUE_BUBBLE_TIP_Y = 0.74;
     const PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_X_RIGHT = -20;
     const PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_X_LEFT = -16;
@@ -452,8 +453,6 @@
             summaryDistance: document.getElementById("summaryDistance"),
             summaryCoins: document.getElementById("summaryCoins"),
             summaryQuestions: document.getElementById("summaryQuestions"),
-            summaryGrade: document.getElementById("summaryGrade"),
-            summaryStreak: document.getElementById("summaryStreak"),
             summaryShieldSaves: document.getElementById("summaryShieldSaves"),
             summaryInitials: document.getElementById("summaryInitials"),
             summarySaveButton: document.getElementById("summarySaveButton"),
@@ -807,13 +806,11 @@
                 state.distanceMeters +
                 state.coinsCollected * 50 +
                 state.questionsCorrect * 120 +
-                state.bestAnswerStreak * 90 +
-                Math.max(0, Math.round(state.gradeValue) - STARTING_GRADE_VALUE) * 12 +
                 state.shieldSaves * 80
             );
 
             if (dom.hudPrimaryText) {
-                dom.hudPrimaryText.textContent = `Grade: ${getGradeDisplay(state.gradeValue)} | Streak: x${state.answerStreak} | Shield: ${state.shieldCharges > 0 ? "Ready" : "None"}`;
+                dom.hudPrimaryText.textContent = `Questions: ${state.questionsCorrect} | Shield: ${state.shieldCharges > 0 ? "Ready" : "None"}`;
             }
 
             if (dom.hudSecondaryText) {
@@ -832,6 +829,7 @@
             }
 
             dom.playerDialogueBubble.classList.remove("is-visible");
+            dom.playerDialogueBubble.classList.remove("is-left-side");
             dom.playerDialogueBubble.setAttribute("aria-hidden", "true");
         }
 
@@ -988,17 +986,12 @@
             const bounds = player.getRenderBounds(screenX, screenY);
             const bubbleWidth = bubble.offsetWidth || 220;
             const bubbleHeight = bubble.offsetHeight || 146;
-            const faceAnchorRatio = player.facing === -1
-                ? PLAYER_DIALOGUE_FACE_ANCHOR_LEFT
-                : PLAYER_DIALOGUE_FACE_ANCHOR_RIGHT;
-            const anchorOffsetX = player.facing === -1
-                ? PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_X_LEFT
-                : PLAYER_DIALOGUE_BUBBLE_FACE_OFFSET_X_RIGHT;
-            const touchShiftX = useTouchUILayout() ? PLAYER_DIALOGUE_BUBBLE_TOUCH_SHIFT_X : 0;
+            const faceAnchorRatio = PLAYER_DIALOGUE_FACE_ANCHOR_LEFT;
+            const touchShiftX = useTouchUILayout() ? 8 : 0;
             const faceX = bounds.x + (bounds.width * faceAnchorRatio);
             const faceY = bounds.y + (bounds.height * PLAYER_DIALOGUE_FACE_ANCHOR_Y);
             const bubbleX = clamp(
-                faceX - (bubbleWidth * PLAYER_DIALOGUE_BUBBLE_TIP_X) + anchorOffsetX + touchShiftX,
+                faceX - (bubbleWidth * PLAYER_DIALOGUE_LEFT_SIDE_TIP_X) + 18 + touchShiftX,
                 12,
                 canvas.width - bubbleWidth - 12
             );
@@ -1008,6 +1001,7 @@
                 canvas.height - bubbleHeight - 24
             );
 
+            bubble.classList.add("is-left-side");
             bubble.classList.add("is-visible");
             bubble.setAttribute("aria-hidden", "false");
             bubble.style.transform = `translate3d(${Math.round(bubbleX)}px, ${Math.round(bubbleY)}px, 0)`;
@@ -1076,14 +1070,20 @@
             const opaqueBounds = getImageOpaqueBounds(arrowImage);
 
             if (opaqueBounds && opaqueBounds.width > 0 && opaqueBounds.height > 0) {
+                const sourceWidth = arrowImage && arrowImage.naturalWidth
+                    ? arrowImage.naturalWidth
+                    : opaqueBounds.width;
+                const sourceHeight = arrowImage && arrowImage.naturalHeight
+                    ? arrowImage.naturalHeight
+                    : opaqueBounds.height;
                 const scale = Math.min(
-                    ARROW_HAZARD_WIDTH / opaqueBounds.width,
-                    ARROW_HAZARD_HEIGHT / opaqueBounds.height
+                    ARROW_HAZARD_WIDTH / sourceWidth,
+                    ARROW_HAZARD_HEIGHT / sourceHeight
                 );
 
                 return {
-                    width: Math.max(40, Math.round(opaqueBounds.width * scale)),
-                    height: Math.max(18, Math.round(opaqueBounds.height * scale)),
+                    width: Math.max(22, Math.round(opaqueBounds.width * scale)),
+                    height: Math.max(10, Math.round(opaqueBounds.height * scale)),
                     sourceBounds: opaqueBounds
                 };
             }
@@ -2879,8 +2879,6 @@
             dom.summaryDistance.textContent = `${state.distanceMeters} m`;
             dom.summaryCoins.textContent = String(state.coinsCollected);
             dom.summaryQuestions.textContent = String(state.questionsCorrect);
-            dom.summaryGrade.textContent = getGradeDisplay(state.gradeValue);
-            dom.summaryStreak.textContent = `x${state.bestAnswerStreak}`;
             dom.summaryShieldSaves.textContent = String(state.shieldSaves);
             dom.summaryInitials.value = "";
             dom.summarySaveButton.disabled = false;
@@ -2912,9 +2910,7 @@
                 distance: state.distanceMeters,
                 questions: state.questionsCorrect,
                 coins: state.coinsCollected,
-                score: state.score,
-                grade: Math.round(state.gradeValue),
-                streak: state.bestAnswerStreak
+                score: state.score
             });
 
             const topScores = sortScores(entries).slice(0, 10);

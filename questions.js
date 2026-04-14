@@ -254,11 +254,18 @@
 
         applyDensityClass(question) {
             const totalLength = question.question.length + question.options.join(" ").length;
-            this.root.classList.remove("question-box--dense", "question-box--extra-dense");
+            const longestOptionLength = question.options.reduce((longest, option) => {
+                return Math.max(longest, option.length);
+            }, 0);
+            const questionLength = question.question.length;
 
-            if (totalLength > 170) {
+            this.root.classList.remove("question-box--dense", "question-box--extra-dense", "question-box--ultra-dense");
+
+            if (totalLength > 190 || longestOptionLength > 72 || questionLength > 92) {
+                this.root.classList.add("question-box--ultra-dense");
+            } else if (totalLength > 150 || longestOptionLength > 58 || questionLength > 74) {
                 this.root.classList.add("question-box--extra-dense");
-            } else if (totalLength > 120) {
+            } else if (totalLength > 115 || longestOptionLength > 46 || questionLength > 60) {
                 this.root.classList.add("question-box--dense");
             }
         }
