@@ -520,12 +520,14 @@ body.menu {
 .menu-screen {
     position: relative;
     z-index: 3;
+    height: var(--viewport-height);
     min-height: var(--viewport-height);
     display: grid;
     place-items: center;
-    padding: clamp(40px, 8vh, 78px) 24px clamp(132px, 18vh, 184px);
+    padding: clamp(28px, 6vh, 56px) 24px clamp(104px, 14vh, 148px);
     text-align: center;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .menu-view {
@@ -564,8 +566,8 @@ body[data-menu-view="how-to-play"] .menu-view-main {
     flex-direction: column;
     align-items: center;
     width: min(860px, 94vw);
-    gap: 28px;
-    transform: translateY(-18px);
+    gap: 22px;
+    transform: none;
 }
 
 .how-screen-stack {
@@ -647,7 +649,7 @@ body[data-menu-view="how-to-play"] .menu-view-main {
     align-items: center;
     justify-content: center;
     width: 100%;
-    transform: translateX(clamp(14px, 2.2vw, 30px));
+    transform: none;
 }
 
 .menu-title-wrap::before {
@@ -677,7 +679,8 @@ body[data-menu-view="how-to-play"] .menu-view-main {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 22px;
+    gap: 18px;
+    width: min(520px, 100%);
 }
 
 .menu-action,
@@ -715,6 +718,8 @@ body[data-menu-view="how-to-play"] .menu-view-main {
     justify-content: center;
     gap: 14px;
     user-select: none;
+    flex-wrap: wrap;
+    max-width: 100%;
 }
 
 .menu-action-label {
@@ -958,6 +963,10 @@ canvas {
     -webkit-user-drag: none;
 }
 
+.player-dialogue-bubble.is-left-side .player-dialogue-bubble-image {
+    transform: scaleX(-1);
+}
+
 .player-dialogue-text {
     position: absolute;
     inset: 24.5% 24% 45.5% 29%;
@@ -977,6 +986,10 @@ canvas {
     word-break: break-word;
     white-space: normal;
     transform-origin: center center;
+}
+
+.player-dialogue-bubble.is-left-side .player-dialogue-text {
+    inset: 24.5% 29% 45.5% 24%;
 }
 
 .mobile-controls {
@@ -1363,6 +1376,8 @@ canvas {
         0 0 0 4px rgba(66, 30, 52, 0.78),
         0 18px 0 rgba(38, 18, 31, 0.9),
         0 34px 70px rgba(0, 0, 0, 0.42);
+    display: grid;
+    gap: 16px;
     overflow: hidden;
 }
 
@@ -1426,14 +1441,58 @@ canvas {
 }
 
 .scoreboard-card p {
+    margin: 0;
     color: #fff7df;
+}
+
+.scoreboard-summary-card {
+    width: min(860px, 96vw);
+    padding: 22px 24px 20px;
+}
+
+.scoreboard-summary-top {
+    display: grid;
+    grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+    gap: 20px;
+    align-items: center;
+}
+
+.scoreboard-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.scoreboard-title-block {
+    display: grid;
+    gap: 6px;
+}
+
+.scoreboard-summary-card .summary-gameover-image {
+    width: min(220px, 28vw);
+    margin: 0 auto;
+}
+
+.scoreboard-summary-card .overlay-kicker {
+    margin-bottom: 0;
+}
+
+.scoreboard-summary-card h2 {
+    margin-bottom: 0;
+}
+
+.scoreboard-summary-card .scoreboard-current {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
 }
 
 .scoreboard-current {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
-    margin: 20px 0 16px;
+    margin: 0;
 }
 
 .scoreboard-current p {
@@ -1466,7 +1525,7 @@ canvas {
     align-items: center;
     gap: 12px;
     justify-content: center;
-    margin: 18px 0;
+    margin: 4px 0 0;
 }
 
 .initials-row input {
@@ -1485,7 +1544,8 @@ canvas {
 
 .scoreboard-table-wrap {
     overflow: auto;
-    margin: 16px 0 22px;
+    max-height: 176px;
+    margin: 0;
     border: 2px solid rgba(255, 226, 179, 0.24);
     border-radius: 12px;
     background: rgba(14, 13, 28, 0.5);
@@ -1562,6 +1622,10 @@ canvas {
     flex-wrap: wrap;
 }
 
+.scoreboard-card .scoreboard-actions {
+    justify-content: flex-end;
+}
+
 .question-box {
     --scroll-ink: #2b1d0e;
     position: fixed;
@@ -1576,11 +1640,44 @@ canvas {
 
 .question-scroll-content {
     position: absolute;
-    inset: 24% 18% 18% 18%;
+    inset: 21.5% 15% 12.8% 15%;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.question-paper-panel {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: clamp(10px, 1.45vw, 16px);
-    overflow: hidden;
+    gap: clamp(8px, 1vw, 12px);
+    padding: clamp(18px, 2.2vw, 28px) clamp(18px, 2.3vw, 30px) clamp(14px, 1.9vw, 22px);
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(83, 52, 20, 0.34) transparent;
+}
+
+.question-paper-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.question-paper-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.question-paper-panel::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(83, 52, 20, 0.34);
 }
 
 .question-kicker {
@@ -1595,30 +1692,30 @@ canvas {
 .question-box h2 {
     margin: 0;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(1.12rem, 1.85vw, 1.72rem);
-    line-height: 1.18;
+    font-size: clamp(0.92rem, 1.32vw, 1.18rem);
+    line-height: 1.16;
     text-align: center;
     color: var(--scroll-ink);
-    max-width: 92%;
+    max-width: 100%;
     align-self: center;
 }
 
 .question-options {
-    width: 92%;
+    width: 100%;
     margin: 0 auto;
     display: grid;
-    gap: 8px;
+    gap: 5px;
 }
 
 .question-box .option-button {
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: start;
-    gap: 14px;
+    gap: 8px;
     width: 100%;
-    padding: 2px 0;
+    padding: 1px 0;
     text-align: left;
-    font-size: clamp(0.94rem, 1.2vw, 1.05rem);
+    font-size: clamp(0.8rem, 0.94vw, 0.88rem);
     color: var(--scroll-ink);
     background: transparent;
     box-shadow: none;
@@ -1626,7 +1723,7 @@ canvas {
 }
 
 .question-box .option-number {
-    min-width: 2rem;
+    min-width: 1.45rem;
     color: var(--scroll-ink);
     text-align: right;
 }
@@ -1634,7 +1731,7 @@ canvas {
 .question-box .option-label {
     display: block;
     color: inherit;
-    line-height: 1.28;
+    line-height: 1.18;
     white-space: normal;
     overflow-wrap: anywhere;
 }
@@ -1649,14 +1746,14 @@ canvas {
 }
 
 .feedback {
-    min-height: 42px;
-    margin: 8px auto 10px;
-    line-height: 1.5;
+    min-height: 30px;
+    margin: 2px auto 0;
+    line-height: 1.32;
     color: var(--scroll-ink);
     text-align: center;
     font-weight: 800;
-    font-size: clamp(0.92rem, 1.2vw, 1rem);
-    width: 88%;
+    font-size: clamp(0.72rem, 0.9vw, 0.82rem);
+    width: 100%;
 }
 
 .feedback[data-state="correct"],
@@ -1665,23 +1762,62 @@ canvas {
 }
 
 .question-box--dense .question-scroll-content {
-    inset: 24.5% 19% 18% 19%;
-    gap: 10px;
+    inset: 21.8% 14.3% 12.5% 14.3%;
 }
 
 .question-box--dense h2 {
-    font-size: clamp(1.02rem, 1.65vw, 1.46rem);
-    max-width: 94%;
+    font-size: clamp(0.84rem, 1.14vw, 1rem);
+}
+
+.question-box--dense .option-button {
+    font-size: clamp(0.74rem, 0.86vw, 0.82rem);
+    gap: 7px;
 }
 
 .question-box--extra-dense .question-scroll-content {
-    inset: 25% 20% 18% 20%;
-    gap: 8px;
+    inset: 21.9% 13.5% 12.3% 13.5%;
 }
 
 .question-box--extra-dense h2 {
-    font-size: clamp(0.96rem, 1.45vw, 1.28rem);
-    line-height: 1.14;
+    font-size: clamp(0.76rem, 0.98vw, 0.9rem);
+    line-height: 1.1;
+}
+
+.question-box--extra-dense .option-button {
+    font-size: clamp(0.68rem, 0.78vw, 0.76rem);
+    gap: 6px;
+}
+
+.question-box--extra-dense .option-number {
+    min-width: 1.28rem;
+}
+
+.question-box--extra-dense .feedback {
+    min-height: 24px;
+    font-size: clamp(0.64rem, 0.72vw, 0.72rem);
+}
+
+.question-box--ultra-dense .question-scroll-content {
+    inset: 22% 12.8% 12% 12.8%;
+}
+
+.question-box--ultra-dense h2 {
+    font-size: clamp(0.7rem, 0.86vw, 0.82rem);
+    line-height: 1.08;
+}
+
+.question-box--ultra-dense .option-button {
+    font-size: clamp(0.62rem, 0.7vw, 0.7rem);
+    gap: 5px;
+}
+
+.question-box--ultra-dense .option-number {
+    min-width: 1.12rem;
+}
+
+.question-box--ultra-dense .feedback {
+    min-height: 22px;
+    font-size: clamp(0.58rem, 0.64vw, 0.64rem);
 }
 
 @media (max-width: 720px) {
@@ -1695,8 +1831,12 @@ canvas {
         line-height: 1.04;
     }
 
+    .player-dialogue-bubble.is-left-side .player-dialogue-text {
+        inset: 25% 29.5% 46.5% 24.5%;
+    }
+
     .menu-screen {
-        padding: 64px 16px 118px;
+        padding: 26px 16px 102px;
     }
 
     .menu-view {
@@ -1705,8 +1845,8 @@ canvas {
 
     .menu-stack {
         width: min(560px, 94vw);
-        gap: 20px;
-        transform: translateY(-6px);
+        gap: 16px;
+        transform: none;
     }
 
     .how-screen-stack {
@@ -1730,7 +1870,7 @@ canvas {
     }
 
     .menu-title-wrap {
-        transform: translateX(clamp(10px, 2.8vw, 18px));
+        transform: none;
     }
 
     .menu-bird-sky {
@@ -1747,8 +1887,8 @@ canvas {
 
     .menu-action,
     .menu-toggle-row {
-        font-size: 0.98rem;
-        line-height: 1.6;
+        font-size: 0.92rem;
+        line-height: 1.5;
     }
 
     .menu-toggle-row {
@@ -1934,6 +2074,24 @@ canvas {
         padding: 24px 18px 22px;
     }
 
+    .scoreboard-summary-card {
+        width: min(94vw, 640px);
+        padding: 18px 16px 16px;
+    }
+
+    .scoreboard-summary-top {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .scoreboard-hero {
+        gap: 8px;
+    }
+
+    .scoreboard-summary-card .summary-gameover-image {
+        width: min(176px, 44vw);
+    }
+
     .scoreboard-card h2 {
         font-size: clamp(0.94rem, 2.6vw, 1.12rem);
     }
@@ -1960,29 +2118,47 @@ canvas {
         width: min(100%, 240px);
     }
 
+    .scoreboard-card .scoreboard-actions {
+        justify-content: center;
+    }
+
+    .scoreboard-table-wrap {
+        max-height: 160px;
+    }
+
     .question-box {
-        width: min(96vw, 78dvh, 560px);
+        width: min(96vw, 80dvh, 580px);
     }
 
     .question-scroll-content {
-        inset: 24% 14% 17% 14%;
-        gap: 8px;
+        inset: 21.6% 12.2% 12.4% 12.2%;
+    }
+
+    .question-box--dense .question-scroll-content,
+    .question-box--extra-dense .question-scroll-content,
+    .question-box--ultra-dense .question-scroll-content {
+        inset: 21.8% 11.8% 12.1% 11.8%;
+    }
+
+    .question-paper-panel {
+        gap: 7px;
+        padding: 16px 16px 14px;
     }
 
     .question-box .option-button {
-        font-size: 0.84rem;
-        gap: 8px;
+        font-size: 0.72rem;
+        gap: 6px;
     }
 
     .feedback {
-        min-height: 48px;
-        margin-bottom: 6px;
+        min-height: 26px;
+        font-size: 0.66rem;
     }
 }
 
 @media (max-width: 520px) {
     .menu-screen {
-        padding: 44px 12px 112px;
+        padding: 22px 12px 96px;
     }
 
     .menu-view {
@@ -1991,7 +2167,7 @@ canvas {
 
     .menu-stack {
         width: 94vw;
-        gap: 16px;
+        gap: 14px;
         transform: none;
     }
 
@@ -2028,13 +2204,13 @@ canvas {
     }
 
     .menu-title-image {
-        width: min(430px, 92vw);
+        width: min(380px, 88vw);
     }
 
     .menu-action,
     .menu-toggle-row {
-        font-size: 0.84rem;
-        line-height: 1.5;
+        font-size: 0.76rem;
+        line-height: 1.42;
     }
 
     .menu-runner-lane {
@@ -2080,6 +2256,19 @@ canvas {
 
     .scoreboard-card {
         padding: 20px 14px 18px;
+    }
+
+    .scoreboard-summary-card {
+        width: min(96vw, 430px);
+        padding: 16px 12px 14px;
+    }
+
+    .scoreboard-summary-top {
+        gap: 10px;
+    }
+
+    .scoreboard-summary-card .summary-gameover-image {
+        width: min(140px, 38vw);
     }
 
     .scoreboard-card h2 {
@@ -2196,36 +2385,45 @@ canvas {
     }
 
     .question-box {
-        width: min(98vw, 92dvh, 430px);
+        width: min(98vw, 94dvh, 452px);
     }
 
     .question-scroll-content {
-        inset: 24.5% 12% 16.5% 12%;
-        gap: 7px;
+        inset: 21.8% 10.2% 12.1% 10.2%;
+    }
+
+    .question-box--dense .question-scroll-content,
+    .question-box--extra-dense .question-scroll-content,
+    .question-box--ultra-dense .question-scroll-content {
+        inset: 22% 9.6% 11.8% 9.6%;
+    }
+
+    .question-paper-panel {
+        gap: 6px;
+        padding: 14px 12px 12px;
     }
 
     .question-kicker {
-        font-size: 0.58rem;
+        font-size: 0.5rem;
     }
 
     .question-box h2 {
-        font-size: clamp(0.9rem, 4vw, 1.1rem);
+        font-size: clamp(0.72rem, 3.4vw, 0.88rem);
         line-height: 1.12;
-        max-width: 96%;
     }
 
     .question-box .option-button {
-        font-size: 0.74rem;
-        gap: 6px;
+        font-size: 0.62rem;
+        gap: 4px;
     }
 
     .question-box .option-number {
-        min-width: 1.4rem;
+        min-width: 1.05rem;
     }
 
     .feedback {
-        font-size: 0.76rem;
-        min-height: 40px;
+        font-size: 0.6rem;
+        min-height: 22px;
     }
 }
 
@@ -2237,16 +2435,20 @@ canvas {
 
 @media (max-height: 760px) {
     .menu-screen {
-        padding: 28px 18px 112px;
+        padding: 18px 18px 94px;
     }
 
     .menu-stack {
-        gap: 18px;
+        gap: 14px;
         transform: none;
     }
 
     .menu-title-wrap {
-        transform: translateX(8px);
+        transform: none;
+    }
+
+    .menu-title-image {
+        width: min(640px, 84vw);
     }
 
     .how-screen-stack {

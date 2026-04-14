@@ -23,7 +23,7 @@
 
     <section class="hud" aria-live="polite">
         <div class="hud-line">
-            <span id="hudPrimaryText" class="hud-primary-text">Grade: C (78%) | Streak: x0 | Shield: None</span>
+            <span id="hudPrimaryText" class="hud-primary-text">Questions: 0 | Shield: None</span>
             <span id="hudSecondaryText" class="hud-secondary-text">Score: 0 | Distance: 0 m | Coins: 0</span>
         </div>
     </section>
@@ -67,17 +67,21 @@
     </section>
 
     <section id="summaryOverlay" class="game-overlay hidden">
-        <div class="overlay-card compact-card scoreboard-card">
-            <img class="gameover-image summary-gameover-image" src="assets/gameover.png" alt="Game Over">
-            <p class="overlay-kicker">High Scores</p>
-            <h2>Arcade Scoreboard</h2>
-            <div class="scoreboard-current">
-                <p><strong>Distance:</strong> <span id="summaryDistance">0 m</span></p>
-                <p><strong>Coins:</strong> <span id="summaryCoins">0</span></p>
-                <p><strong>Questions Correct:</strong> <span id="summaryQuestions">0</span></p>
-                <p><strong>Final Grade:</strong> <span id="summaryGrade">C (78%)</span></p>
-                <p><strong>Best Streak:</strong> <span id="summaryStreak">x0</span></p>
-                <p><strong>Shield Saves:</strong> <span id="summaryShieldSaves">0</span></p>
+        <div class="overlay-card scoreboard-card scoreboard-summary-card">
+            <div class="scoreboard-summary-top">
+                <div class="scoreboard-hero">
+                    <img class="gameover-image summary-gameover-image" src="assets/gameover.png" alt="Game Over">
+                    <div class="scoreboard-title-block">
+                        <p class="overlay-kicker">High Scores</p>
+                        <h2>Arcade Scoreboard</h2>
+                    </div>
+                </div>
+                <div class="scoreboard-current">
+                    <p><strong>Distance:</strong> <span id="summaryDistance">0 m</span></p>
+                    <p><strong>Coins:</strong> <span id="summaryCoins">0</span></p>
+                    <p><strong>Questions:</strong> <span id="summaryQuestions">0</span></p>
+                    <p><strong>Shield Saves:</strong> <span id="summaryShieldSaves">0</span></p>
+                </div>
             </div>
             <div class="initials-row">
                 <label for="summaryInitials">Initials</label>
@@ -106,10 +110,12 @@
 
     <section id="questionBox" class="question-box hidden" aria-live="assertive" aria-modal="true" role="dialog">
         <div class="question-scroll-content">
-            <p class="question-kicker">Accounting Challenge</p>
-            <h2 id="questionText">Question</h2>
-            <div id="options" class="question-options"></div>
-            <p id="feedback" class="feedback"></p>
+            <div class="question-paper-panel">
+                <p class="question-kicker">Accounting Challenge</p>
+                <h2 id="questionText">Question</h2>
+                <div id="options" class="question-options"></div>
+                <p id="feedback" class="feedback"></p>
+            </div>
         </div>
     </section>
 
