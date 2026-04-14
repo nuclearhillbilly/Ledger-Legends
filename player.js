@@ -18,6 +18,8 @@
             this.gravity = 0.55;
             this.maxFallSpeed = 18;
             this.animationInterval = 95;
+            this.coyoteTimeMs = 110;
+            this.jumpBufferMs = 120;
             this.animationTimer = 0;
             this.currentFrame = 1;
             this.isMoving = false;
@@ -35,6 +37,9 @@
             this.isMoving = false;
             this.isOnGround = true;
             this.inLava = false;
+            this.coyoteTimer = this.coyoteTimeMs;
+            this.jumpBufferTimer = 0;
+            this.jumpHeld = false;
             this.animationTimer = 0;
             this.currentFrame = 1;
         }
@@ -46,6 +51,9 @@
                 this.jumping = false;
                 this.isOnGround = false;
                 this.isMoving = false;
+                this.coyoteTimer = 0;
+                this.jumpBufferTimer = 0;
+                this.jumpHeld = false;
                 this.animationTimer = 0;
                 this.currentFrame = 1;
             }
@@ -75,9 +83,26 @@
             return this.hitboxTopY + this.hitboxHeight;
         }
 
+        beginJump() {
+            this.dy = -this.jumpForce;
+            this.jumping = true;
+            this.isOnGround = false;
+            this.coyoteTimer = 0;
+            this.jumpBufferTimer = 0;
+            this.currentFrame = 1;
+            this.animationTimer = 0;
+        }
+
         handleInput(keys, deltaMs) {
             const timeScale = Math.min(2, Math.max(0.2, deltaMs / 16.67 || 1));
+            const stepMs = Math.max(0, deltaMs || 16.67);
             let horizontal = 0;
+
+            this.coyoteTimer = this.isOnGround
+                ? this.coyoteTimeMs
+                : Math.max(0, this.coyoteTimer - stepMs);
+
+            this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - stepMs);
 
             if (keys.ArrowRight || keys.KeyD) {
                 horizontal += 1;
@@ -95,12 +120,15 @@
             }
 
             const wantsJump = keys.Space || keys.ArrowUp || keys.KeyW;
-            if (wantsJump && this.isOnGround) {
-                this.dy = -this.jumpForce;
-                this.jumping = true;
-                this.isOnGround = false;
-                this.currentFrame = 1;
-                this.animationTimer = 0;
+
+            if (wantsJump && !this.jumpHeld) {
+                this.jumpBufferTimer = this.jumpBufferMs;
+            }
+
+            this.jumpHeld = wantsJump;
+
+            if (this.jumpBufferTimer > 0 && (this.isOnGround || this.coyoteTimer > 0)) {
+                this.beginJump();
             }
 
             this.updateAnimation(deltaMs);
@@ -142,6 +170,7 @@
             this.dy = 0;
             this.jumping = false;
             this.isOnGround = true;
+            this.coyoteTimer = this.coyoteTimeMs;
         }
 
         getCurrentSprite() {

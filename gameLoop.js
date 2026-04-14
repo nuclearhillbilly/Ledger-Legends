@@ -115,6 +115,7 @@
         "I'm passing this. No matter what."
     ];
     const PLAYER_DIALOGUE_VISIBLE_MS = 4000;
+    const PLAYER_DIALOGUE_INTERVAL_MS = 10000;
     const PLAYER_DIALOGUE_NEAR_LAVA_BUFFER = 78;
     const PLAYER_DIALOGUE_FACE_ANCHOR_RIGHT = 0.58;
     const PLAYER_DIALOGUE_FACE_ANCHOR_LEFT = 0.42;
@@ -138,6 +139,15 @@
     const ARROW_HAZARD_COLLISION_INSET_Y = 0.16;
     const ARROW_FLAME_LEVEL_NAME = "Mushroom";
     const IMAGE_ALPHA_THRESHOLD = 10;
+    const STARTING_GRADE_VALUE = 78;
+    const GRADE_CORRECT_BONUS = 8;
+    const GRADE_WRONG_PENALTY = 16;
+    const GRADE_COIN_BONUS = 0.35;
+    const GRADE_SHIELD_PENALTY = 6;
+    const SHIELD_PICKUP_START_METERS = 900;
+    const SHIELD_PICKUP_RESPAWN_MIN_METERS = 540;
+    const SHIELD_PICKUP_RESPAWN_MAX_METERS = 860;
+    const SHIELD_PICKUP_SIZE = 38;
     const imageOpaqueBoundsCache = new WeakMap();
 
     function clamp(value, min, max) {
@@ -204,21 +214,11 @@
     }
 
     function getDialogueCooldownMs(reason) {
-        if (reason === "near-lava") {
-            return randomBetween(3800, 5600);
-        }
-
-        if (reason === "ambient") {
-            return randomBetween(3400, 5200);
-        }
-
-        return randomBetween(3000, 4600);
+        return PLAYER_DIALOGUE_INTERVAL_MS;
     }
 
     function getAmbientDialogueDelayMs(startSoon) {
-        return startSoon
-            ? randomBetween(1800, 3600)
-            : randomBetween(5200, 8600);
+        return PLAYER_DIALOGUE_INTERVAL_MS;
     }
 
     function getViewportSize() {
@@ -424,7 +424,8 @@
             devMode: false
         }, root.settings || {});
         const dom = {
-            hudText: document.getElementById("hudText"),
+            hudPrimaryText: document.getElementById("hudPrimaryText"),
+            hudSecondaryText: document.getElementById("hudSecondaryText"),
             playerDialogueBubble: document.getElementById("playerDialogueBubble"),
             playerDialogueText: document.getElementById("playerDialogueText"),
             mobileControls: document.getElementById("mobileControls"),
@@ -451,6 +452,9 @@
             summaryDistance: document.getElementById("summaryDistance"),
             summaryCoins: document.getElementById("summaryCoins"),
             summaryQuestions: document.getElementById("summaryQuestions"),
+            summaryGrade: document.getElementById("summaryGrade"),
+            summaryStreak: document.getElementById("summaryStreak"),
+            summaryShieldSaves: document.getElementById("summaryShieldSaves"),
             summaryInitials: document.getElementById("summaryInitials"),
             summarySaveButton: document.getElementById("summarySaveButton"),
             scoreboardBody: document.getElementById("scoreboardBody"),
@@ -503,15 +507,29 @@
             coinsCollected: 0,
             questionsAnswered: 0,
             questionsCorrect: 0,
+            gradeValue: STARTING_GRADE_VALUE,
+            answerStreak: 0,
+            bestAnswerStreak: 0,
+            shieldCharges: 0,
+            shieldSaves: 0,
+            shieldPickup: null,
+            nextShieldPickupMeters: SHIELD_PICKUP_START_METERS,
             safeSpawn: { x: 0, y: 0, platformId: null, offsetX: 0, surfaceY: 0 },
             smokeParticles: [],
             smokeSpawnTimer: 0,
+            effectParticles: [],
+            floatingTexts: [],
             lavaSputters: [],
             lavaSputterTimer: 0,
             lavaMonster: null,
             activeAmbience: null,
             flyerSpawnTimer: 0,
             flyers: [],
+            screenShake: {
+                timeLeftMs: 0,
+                durationMs: 0,
+                magnitude: 0
+            },
             arrowHazards: [],
             arrowSpawnTimer: 0,
             dialogue: {
@@ -521,8 +539,8 @@
                 visible: false,
                 visibleMs: 0,
                 visibleUntilMs: 0,
-                cooldownMs: randomBetween(1200, 2400),
-                idleMs: randomBetween(1800, 3600),
+                cooldownMs: PLAYER_DIALOGUE_INTERVAL_MS,
+                idleMs: PLAYER_DIALOGUE_INTERVAL_MS,
                 nearLavaReady: true
             },
             dev: {
@@ -590,9 +608,218 @@
             });
         }
 
+        function getGradeLetter(value) {
+            if (value >= 90) {
+                return "A";
+            }
+
+            if (value >= 80) {
+                return "B";
+            }
+
+            if (value >= 70) {
+                return "C";
+            }
+
+            if (value >= 60) {
+                return "D";
+            }
+
+            return "F";
+        }
+
+        function getGradeDisplay(value) {
+            const safeValue = Math.round(clamp(value, 0, 100));
+            return `${getGradeLetter(safeValue)} (${safeValue}%)`;
+        }
+
+        function adjustGrade(delta) {
+            state.gradeValue = clamp(state.gradeValue + delta, 0, 100);
+        }
+
+        function startScreenShake(durationMs, magnitude) {
+            state.screenShake.timeLeftMs = Math.max(state.screenShake.timeLeftMs, durationMs);
+            state.screenShake.durationMs = Math.max(state.screenShake.durationMs, durationMs);
+            state.screenShake.magnitude = Math.max(state.screenShake.magnitude, magnitude);
+        }
+
+        function getScreenShakeOffset(timeMs) {
+            if (!state.screenShake.timeLeftMs || !state.screenShake.durationMs || !state.screenShake.magnitude) {
+                return { x: 0, y: 0 };
+            }
+
+            const progress = clamp(state.screenShake.timeLeftMs / state.screenShake.durationMs, 0, 1);
+            const strength = state.screenShake.magnitude * progress;
+
+            return {
+                x: Math.sin((timeMs || 0) * 0.18 + 2.4) * strength,
+                y: Math.cos((timeMs || 0) * 0.23 + 0.6) * strength * 0.7
+            };
+        }
+
+        function addFloatingText(text, x, y, color, durationMs) {
+            state.floatingTexts.push({
+                text: text,
+                x: x,
+                y: y,
+                vy: -1.1,
+                life: durationMs || 900,
+                maxLife: durationMs || 900,
+                color: color || "#ffffff"
+            });
+        }
+
+        function spawnBurstParticles(x, y, options) {
+            const settings = Object.assign({
+                count: 8,
+                colors: ["#fbbf24", "#fde68a"],
+                speedMin: 1.2,
+                speedMax: 3.2,
+                radiusMin: 2.8,
+                radiusMax: 5.4,
+                growth: 0.03,
+                gravity: 0.08,
+                lifeMin: 340,
+                lifeMax: 560,
+                directionMin: 0,
+                directionMax: Math.PI * 2
+            }, options || {});
+
+            for (let index = 0; index < settings.count; index += 1) {
+                const angle = randomBetween(settings.directionMin, settings.directionMax);
+                const speed = randomBetween(settings.speedMin, settings.speedMax);
+                const color = settings.colors[Math.floor(Math.random() * settings.colors.length)];
+
+                state.effectParticles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: randomBetween(settings.radiusMin, settings.radiusMax),
+                    growth: settings.growth,
+                    gravity: settings.gravity,
+                    life: randomBetween(settings.lifeMin, settings.lifeMax),
+                    maxLife: settings.lifeMax,
+                    color: color
+                });
+            }
+        }
+
+        function spawnLandingBurst(x, y, hardLanding) {
+            spawnBurstParticles(x, y, {
+                count: hardLanding ? 11 : 7,
+                colors: ["#f8fafc", "#cbd5e1", "#94a3b8"],
+                speedMin: 0.9,
+                speedMax: hardLanding ? 3.5 : 2.5,
+                radiusMin: 2.4,
+                radiusMax: 5.8,
+                growth: 0.04,
+                gravity: 0.06,
+                lifeMin: 280,
+                lifeMax: hardLanding ? 620 : 520,
+                directionMin: -Math.PI * 0.95,
+                directionMax: -Math.PI * 0.05
+            });
+        }
+
+        function spawnCoinBurst(x, y) {
+            spawnBurstParticles(x, y, {
+                count: 10,
+                colors: ["#fde68a", "#fbbf24", "#f59e0b"],
+                speedMin: 1.2,
+                speedMax: 3.8,
+                radiusMin: 2.6,
+                radiusMax: 4.8,
+                growth: 0.02,
+                gravity: 0.05,
+                lifeMin: 320,
+                lifeMax: 620,
+                directionMin: -Math.PI * 0.92,
+                directionMax: Math.PI * 0.08
+            });
+        }
+
+        function spawnShieldBurst(x, y) {
+            spawnBurstParticles(x, y, {
+                count: 12,
+                colors: ["#dbeafe", "#93c5fd", "#38bdf8"],
+                speedMin: 1,
+                speedMax: 3.6,
+                radiusMin: 2.8,
+                radiusMax: 5.2,
+                growth: 0.02,
+                gravity: 0.03,
+                lifeMin: 360,
+                lifeMax: 740,
+                directionMin: 0,
+                directionMax: Math.PI * 2
+            });
+        }
+
+        function registerCorrectAnswer() {
+            const streakBonus = Math.min(8, Math.max(0, state.answerStreak - 1) * 1.5);
+            adjustGrade(GRADE_CORRECT_BONUS + streakBonus);
+            addFloatingText(
+                state.answerStreak > 1 ? `Correct! x${state.answerStreak}` : "Correct!",
+                player.centerX,
+                player.hitboxTopY - 16,
+                "#86efac",
+                1040
+            );
+            spawnBurstParticles(player.centerX, player.hitboxCenterY, {
+                count: 9,
+                colors: ["#86efac", "#bbf7d0", "#fef08a"],
+                speedMin: 1.1,
+                speedMax: 3.3,
+                gravity: 0.03,
+                lifeMin: 360,
+                lifeMax: 720,
+                directionMin: -Math.PI * 0.95,
+                directionMax: Math.PI * 0.05
+            });
+            startScreenShake(100, Math.min(2 + state.answerStreak * 0.45, 4.6));
+        }
+
+        function registerWrongAnswer() {
+            state.answerStreak = 0;
+            adjustGrade(-GRADE_WRONG_PENALTY);
+
+            if (player) {
+                addFloatingText("Wrong answer", player.centerX, player.hitboxTopY - 18, "#fca5a5", 1100);
+                spawnBurstParticles(player.centerX, player.hitboxCenterY, {
+                    count: 10,
+                    colors: ["#fca5a5", "#fb7185", "#f97316"],
+                    speedMin: 1.1,
+                    speedMax: 3.8,
+                    gravity: 0.06,
+                    lifeMin: 360,
+                    lifeMax: 760,
+                    directionMin: 0,
+                    directionMax: Math.PI * 2
+                });
+            }
+
+            startScreenShake(180, 6);
+        }
+
         function updateHud() {
-            state.score = Math.floor(state.distanceMeters + state.coinsCollected * 50 + state.questionsCorrect * 100);
-            dom.hudText.textContent = `Score: ${state.score} | Distance: ${state.distanceMeters} m | Coins: ${state.coinsCollected}`;
+            state.score = Math.floor(
+                state.distanceMeters +
+                state.coinsCollected * 50 +
+                state.questionsCorrect * 120 +
+                state.bestAnswerStreak * 90 +
+                Math.max(0, Math.round(state.gradeValue) - STARTING_GRADE_VALUE) * 12 +
+                state.shieldSaves * 80
+            );
+
+            if (dom.hudPrimaryText) {
+                dom.hudPrimaryText.textContent = `Grade: ${getGradeDisplay(state.gradeValue)} | Streak: x${state.answerStreak} | Shield: ${state.shieldCharges > 0 ? "Ready" : "None"}`;
+            }
+
+            if (dom.hudSecondaryText) {
+                dom.hudSecondaryText.textContent = `Score: ${state.score} | Distance: ${state.distanceMeters} m | Coins: ${state.coinsCollected}`;
+            }
+
             dom.soundToggleButton.classList.toggle("is-muted", state.isMuted);
             dom.soundToggleButton.textContent = state.isMuted ? "Muted" : "Sound";
             dom.soundToggleButton.setAttribute("aria-pressed", String(!state.isMuted));
@@ -670,7 +897,7 @@
             state.dialogue.visible = false;
             state.dialogue.visibleMs = 0;
             state.dialogue.visibleUntilMs = 0;
-            state.dialogue.cooldownMs = 0;
+            state.dialogue.cooldownMs = PLAYER_DIALOGUE_INTERVAL_MS;
             state.dialogue.idleMs = getAmbientDialogueDelayMs(startSoon);
             state.dialogue.nearLavaReady = true;
 
@@ -891,12 +1118,21 @@
             return laneTargets[Math.floor(Math.random() * laneTargets.length)];
         }
 
+        function getArrowSpawnLeadRange() {
+            return {
+                min: Math.max(72, canvas.width * 0.18),
+                max: Math.max(140, canvas.width * 0.34)
+            };
+        }
+
         function createArrowHazard() {
             const size = getArrowHazardDimensions();
+            const spawnLead = getArrowSpawnLeadRange();
+
             return {
                 worldX: state.cameraX + canvas.width + size.width + randomBetween(
-                    Math.max(72, canvas.width * 0.18),
-                    Math.max(140, canvas.width * 0.34)
+                    spawnLead.min,
+                    spawnLead.max
                 ),
                 y: pickArrowLaneY(size.height),
                 width: size.width,
@@ -1008,13 +1244,18 @@
 
             state.arrowHazards = state.arrowHazards.filter(function (hazard) {
                 const screenX = getArrowHazardScreenX(hazard);
+                const spawnLead = getArrowSpawnLeadRange();
                 return !hazard.hit &&
-                    screenX < canvas.width + hazard.width + 80 &&
+                    screenX < canvas.width + hazard.width + spawnLead.max + 80 &&
                     screenX + hazard.width > -hazard.width - 80;
             });
 
             if (hitArrow) {
                 resetArrowHazards(false);
+
+                if (consumeShieldCharge("arrow")) {
+                    return false;
+                }
             }
 
             return hitArrow;
@@ -1625,16 +1866,28 @@
             state.coinsCollected = 0;
             state.questionsAnswered = 0;
             state.questionsCorrect = 0;
+            state.gradeValue = STARTING_GRADE_VALUE;
+            state.answerStreak = 0;
+            state.bestAnswerStreak = 0;
+            state.shieldCharges = 0;
+            state.shieldSaves = 0;
+            state.shieldPickup = null;
+            state.nextShieldPickupMeters = SHIELD_PICKUP_START_METERS;
             state.isPaused = false;
             state.isQuestionActive = false;
             state.isGameOver = false;
             state.scoreSaved = false;
             state.smokeParticles = [];
             state.smokeSpawnTimer = 0;
+            state.effectParticles = [];
+            state.floatingTexts = [];
             state.lavaSputters = [];
             state.lavaSputterTimer = 0;
             resetLavaMonster();
             state.flyers = [];
+            state.screenShake.timeLeftMs = 0;
+            state.screenShake.durationMs = 0;
+            state.screenShake.magnitude = 0;
             resetArrowHazards(true);
             state.activeAmbience = null;
             state.flyerSpawnTimer = randomBetween(1400, 2800);
@@ -1934,6 +2187,178 @@
             });
         }
 
+        function scheduleNextShieldPickup(minDistance, maxDistance) {
+            state.nextShieldPickupMeters = Math.floor(
+                state.distanceMeters + randomBetween(
+                    minDistance || SHIELD_PICKUP_RESPAWN_MIN_METERS,
+                    maxDistance || SHIELD_PICKUP_RESPAWN_MAX_METERS
+                )
+            );
+        }
+
+        function getShieldPickupBob(pickup, timeMs) {
+            return Math.sin((timeMs || 0) * 0.004 + pickup.bobSeed) * 4.5;
+        }
+
+        function maybeSpawnShieldPickup() {
+            if (
+                !player ||
+                state.shieldCharges > 0 ||
+                state.shieldPickup ||
+                state.distanceMeters < state.nextShieldPickupMeters
+            ) {
+                return;
+            }
+
+            const minX = player.centerX + canvas.width * 0.45;
+            const maxX = player.centerX + canvas.width * 1.65;
+            const candidates = platformManager.getPlatforms().filter(function (platform) {
+                const pickupX = platform.x + platform.w / 2;
+                return pickupX >= minX &&
+                    pickupX <= maxX &&
+                    platform.w >= player.width + 44 &&
+                    getLandingSurfaceY(platform) <= getLavaSurfaceY() - 28;
+            }).slice(0, 6);
+
+            if (!candidates.length) {
+                return;
+            }
+
+            const platform = candidates[Math.floor(Math.random() * candidates.length)];
+            const offsetX = clamp(platform.w * randomBetween(0.36, 0.64), 28, platform.w - 28);
+            state.shieldPickup = {
+                platformId: platform.id,
+                offsetX: offsetX,
+                offsetY: -70,
+                bobSeed: randomBetween(0, Math.PI * 2),
+                size: SHIELD_PICKUP_SIZE,
+                x: platform.x + offsetX,
+                y: getLandingSurfaceY(platform) - 70
+            };
+            scheduleNextShieldPickup();
+        }
+
+        function updateShieldPickup() {
+            if (!state.shieldPickup) {
+                return;
+            }
+
+            const pickup = state.shieldPickup;
+            const platform = platformManager.getPlatforms().find(function (candidate) {
+                return candidate.id === pickup.platformId;
+            });
+
+            if (!platform) {
+                state.shieldPickup = null;
+                return;
+            }
+
+            pickup.x = platform.x + pickup.offsetX;
+            pickup.y = getLandingSurfaceY(platform) + pickup.offsetY;
+
+            if (pickup.x + pickup.size < state.cameraX - 120) {
+                state.shieldPickup = null;
+            }
+        }
+
+        function collectShieldPickup() {
+            if (!state.shieldPickup || !player) {
+                return false;
+            }
+
+            const pickup = state.shieldPickup;
+            const bob = getShieldPickupBob(pickup, state.sceneTimeMs);
+            const half = pickup.size / 2;
+            const centerY = pickup.y + bob;
+            const withinX = player.rightX > pickup.x - half && player.leftX < pickup.x + half;
+            const withinY = player.bottomY > centerY - half && player.hitboxTopY < centerY + half;
+
+            if (!withinX || !withinY) {
+                return false;
+            }
+
+            state.shieldCharges = 1;
+            state.shieldPickup = null;
+            addFloatingText("Shield Ready", pickup.x, centerY - 12, "#93c5fd", 1020);
+            spawnShieldBurst(pickup.x, centerY);
+            startScreenShake(120, 3.2);
+            updateHud();
+            return true;
+        }
+
+        function consumeShieldCharge(reason) {
+            if (state.shieldCharges <= 0 || !player) {
+                return false;
+            }
+
+            state.shieldCharges -= 1;
+            state.shieldSaves += 1;
+            adjustGrade(-GRADE_SHIELD_PENALTY);
+            addFloatingText(
+                reason === "lava" ? "Shield Save!" : "Blocked!",
+                player.centerX,
+                player.hitboxTopY - 18,
+                "#bfdbfe",
+                980
+            );
+            spawnShieldBurst(player.centerX, player.hitboxCenterY);
+            startScreenShake(reason === "lava" ? 180 : 130, reason === "lava" ? 6.2 : 4.4);
+            updateHud();
+            return true;
+        }
+
+        function drawShieldPickup(timeMs) {
+            if (!state.shieldPickup) {
+                return;
+            }
+
+            const pickup = state.shieldPickup;
+            const bob = getShieldPickupBob(pickup, timeMs);
+            const screenX = pickup.x - state.cameraX;
+            const drawY = pickup.y + bob;
+            const size = pickup.size;
+            const pulse = 0.82 + 0.18 * Math.sin((timeMs || 0) * 0.01 + pickup.bobSeed);
+
+            ctx.save();
+            ctx.translate(screenX, drawY);
+            ctx.globalCompositeOperation = "screen";
+            const glow = ctx.createRadialGradient(0, 0, size * 0.16, 0, 0, size * 0.92);
+            glow.addColorStop(0, `rgba(219, 234, 254, ${0.88 * pulse})`);
+            glow.addColorStop(0.5, `rgba(96, 165, 250, ${0.42 * pulse})`);
+            glow.addColorStop(1, "rgba(56, 189, 248, 0)");
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(0, 0, size * 0.9, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalCompositeOperation = "source-over";
+            ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
+            ctx.beginPath();
+            ctx.moveTo(0, -size * 0.54);
+            ctx.lineTo(size * 0.44, -size * 0.18);
+            ctx.lineTo(size * 0.34, size * 0.36);
+            ctx.lineTo(0, size * 0.56);
+            ctx.lineTo(-size * 0.34, size * 0.36);
+            ctx.lineTo(-size * 0.44, -size * 0.18);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.strokeStyle = "#dbeafe";
+            ctx.lineWidth = Math.max(2, size * 0.08);
+            ctx.stroke();
+
+            ctx.strokeStyle = "#7dd3fc";
+            ctx.lineWidth = Math.max(2, size * 0.06);
+            ctx.beginPath();
+            ctx.moveTo(0, -size * 0.34);
+            ctx.lineTo(0, size * 0.28);
+            ctx.moveTo(-size * 0.18, -size * 0.04);
+            ctx.lineTo(0, -size * 0.2);
+            ctx.lineTo(size * 0.18, -size * 0.04);
+            ctx.stroke();
+            ctx.restore();
+        }
+
         function updateAmbient(deltaMs) {
             const levelInfo = getCurrentLevelInfo(state.distanceMeters);
             if (state.activeAmbience !== levelInfo.config.ambience) {
@@ -2209,6 +2634,73 @@
             });
         }
 
+        function updatePresentationEffects(deltaMs) {
+            if (state.screenShake.timeLeftMs > 0) {
+                state.screenShake.timeLeftMs = Math.max(0, state.screenShake.timeLeftMs - deltaMs);
+
+                if (state.screenShake.timeLeftMs === 0) {
+                    state.screenShake.durationMs = 0;
+                    state.screenShake.magnitude = 0;
+                }
+            }
+
+            state.effectParticles.forEach(function (particle) {
+                const timeScale = deltaMs / 16.67;
+                particle.x += particle.vx * timeScale;
+                particle.y += particle.vy * timeScale;
+                particle.vy += particle.gravity * timeScale;
+                particle.life -= deltaMs;
+                particle.radius += particle.growth * timeScale;
+            });
+
+            state.effectParticles = state.effectParticles.filter(function (particle) {
+                return particle.life > 0;
+            });
+
+            state.floatingTexts.forEach(function (entry) {
+                const timeScale = deltaMs / 16.67;
+                entry.y += entry.vy * timeScale;
+                entry.life -= deltaMs;
+            });
+
+            state.floatingTexts = state.floatingTexts.filter(function (entry) {
+                return entry.life > 0;
+            });
+        }
+
+        function drawJuiceEffects() {
+            state.effectParticles.forEach(function (particle) {
+                const alpha = clamp(particle.life / particle.maxLife, 0, 1);
+                ctx.save();
+                ctx.globalAlpha = alpha * 0.95;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x - state.cameraX, particle.y, particle.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            if (!state.floatingTexts.length) {
+                return;
+            }
+
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "700 14px 'Trebuchet MS', 'Segoe UI', sans-serif";
+
+            state.floatingTexts.forEach(function (entry) {
+                const alpha = clamp(entry.life / entry.maxLife, 0, 1);
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = "rgba(15, 23, 42, 0.72)";
+                ctx.fillText(entry.text, entry.x - state.cameraX + 1, entry.y + 1);
+                ctx.fillStyle = entry.color;
+                ctx.fillText(entry.text, entry.x - state.cameraX, entry.y);
+            });
+
+            ctx.restore();
+        }
+
         function getMergedInput() {
             const input = Object.assign({}, state.keys);
 
@@ -2289,6 +2781,10 @@
                     coin.collected = true;
                     state.coinsCollected += 1;
                     collectedCount += 1;
+                    adjustGrade(GRADE_COIN_BONUS);
+                    addFloatingText("+50", coin.x, coin.y - 10, "#fde68a", 860);
+                    spawnCoinBurst(coin.x, coin.y);
+                    startScreenShake(60, 1.4);
                     playCoinSound();
                 }
             });
@@ -2383,6 +2879,9 @@
             dom.summaryDistance.textContent = `${state.distanceMeters} m`;
             dom.summaryCoins.textContent = String(state.coinsCollected);
             dom.summaryQuestions.textContent = String(state.questionsCorrect);
+            dom.summaryGrade.textContent = getGradeDisplay(state.gradeValue);
+            dom.summaryStreak.textContent = `x${state.bestAnswerStreak}`;
+            dom.summaryShieldSaves.textContent = String(state.shieldSaves);
             dom.summaryInitials.value = "";
             dom.summarySaveButton.disabled = false;
             dom.summaryOverlay.classList.remove("hidden");
@@ -2412,7 +2911,10 @@
                 initials: sanitizeInitials(dom.summaryInitials.value),
                 distance: state.distanceMeters,
                 questions: state.questionsCorrect,
-                coins: state.coinsCollected
+                coins: state.coinsCollected,
+                score: state.score,
+                grade: Math.round(state.gradeValue),
+                streak: state.bestAnswerStreak
             });
 
             const topScores = sortScores(entries).slice(0, 10);
@@ -2476,7 +2978,10 @@
 
             if (state.dev.enabled && state.dev.skipQuestions) {
                 state.questionsAnswered += 1;
+                state.answerStreak += 1;
+                state.bestAnswerStreak = Math.max(state.bestAnswerStreak, state.answerStreak);
                 state.questionsCorrect += 1;
+                registerCorrectAnswer();
                 state.isQuestionActive = false;
                 dom.cornerControls.classList.remove("hidden");
                 respawnPlayer(respawnTargetX);
@@ -2494,9 +2999,13 @@
             dom.cornerControls.classList.remove("hidden");
 
             if (result.isCorrect) {
+                state.answerStreak += 1;
+                state.bestAnswerStreak = Math.max(state.bestAnswerStreak, state.answerStreak);
                 state.questionsCorrect += 1;
+                registerCorrectAnswer();
                 respawnPlayer(respawnTargetX);
             } else {
+                registerWrongAnswer();
                 endRun();
             }
 
@@ -2515,6 +3024,7 @@
             const input = getMergedInput();
             const wasGrounded = player.isOnGround;
             const previousBottomY = player.bottomY;
+            const previousVerticalSpeed = player.dy;
 
             player.handleInput(input, deltaMs);
             state.jumpQueued = false;
@@ -2532,10 +3042,21 @@
             const landedPlatform = resolvePlatformCollisions(previousBottomY);
             if (landedPlatform) {
                 updateSafeSpawn(landedPlatform);
+
+                if (!wasGrounded || previousVerticalSpeed > 5.6) {
+                    spawnLandingBurst(player.centerX, player.bottomY + 2, previousVerticalSpeed > 9.8);
+
+                    if (previousVerticalSpeed > 9.8) {
+                        startScreenShake(95, 2.4);
+                    }
+                }
             }
 
             updateWorldMetrics();
+            updateShieldPickup();
+            maybeSpawnShieldPickup();
             const collectedCoins = collectCoins();
+            collectShieldPickup();
 
             if (jumpedThisFrame) {
                 tryTriggerPlayerDialogue("jump", 0.36);
@@ -2564,6 +3085,14 @@
             }
 
             if (player.bottomY >= getLavaSurfaceY() + 4) {
+                if (consumeShieldCharge("lava")) {
+                    state.arrowHazards = [];
+                    resetArrowHazards(false);
+                    respawnPlayer(player.centerX);
+                    updateHud();
+                    return;
+                }
+
                 if (state.dev.enabled && state.dev.freezeLava) {
                     respawnPlayer(player.centerX);
                     logDev("Lava death prevented.");
@@ -2587,6 +3116,10 @@
                 return;
             }
 
+            const screenShakeOffset = getScreenShakeOffset(timeMs);
+
+            ctx.save();
+            ctx.translate(screenShakeOffset.x, screenShakeOffset.y);
             drawBackground();
             drawLava(timeMs);
             drawLavaMonster(timeMs);
@@ -2594,10 +3127,13 @@
             drawLavaSputters();
             drawPlatforms();
             drawCoins(timeMs);
+            drawShieldPickup(timeMs);
             drawFlyers(timeMs);
             drawPlayer();
             drawArrowHazards(timeMs);
             drawSmoke();
+            drawJuiceEffects();
+            ctx.restore();
         }
 
         function frame(timeMs) {
@@ -2619,6 +3155,7 @@
             if (state.assetsReady) {
                 updateLavaSputters(deltaMs);
                 updateSmoke(deltaMs);
+                updatePresentationEffects(deltaMs);
             }
 
             updateMusic(deltaMs);

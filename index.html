@@ -79,6 +79,7 @@
 
     <script>
     const SETTINGS_STORAGE_KEY = "ledger-legends-settings";
+    const SESSION_SETTINGS_STORAGE_KEY = "ledger-legends-session-settings";
     const MENU_DIALOGUE_LINES = [
         "Easy jump!",
         "Stay focused!",
@@ -136,15 +137,27 @@
 
     function saveGameSettings() {
         const settings = readGameSettings();
-        const devMode = document.getElementById("devModeToggle").checked;
         window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
-            category: typeof settings.category === "string" ? settings.category : "mixed",
+            category: typeof settings.category === "string" ? settings.category : "mixed"
+        }));
+    }
+
+    function saveLaunchSettings() {
+        const devMode = document.getElementById("devModeToggle").checked;
+        window.sessionStorage.setItem(SESSION_SETTINGS_STORAGE_KEY, JSON.stringify({
             devMode: devMode
+        }));
+    }
+
+    function resetLaunchSettings() {
+        window.sessionStorage.setItem(SESSION_SETTINGS_STORAGE_KEY, JSON.stringify({
+            devMode: false
         }));
     }
 
     function launchGame() {
         saveGameSettings();
+        saveLaunchSettings();
         window.location.href = "game.html";
     }
 
@@ -435,7 +448,6 @@
     }
 
     (function initMenu() {
-        const settings = readGameSettings();
         const devModeToggle = document.getElementById("devModeToggle");
         const startGameButton = document.getElementById("startGameButton");
         const howToPlayButton = document.getElementById("howToPlayButton");
@@ -444,14 +456,15 @@
         startGameButton.addEventListener("click", launchGame);
         howToPlayButton.addEventListener("click", showHowToPlay);
         backToMenuButton.addEventListener("click", showMainMenu);
-        devModeToggle.addEventListener("change", saveGameSettings);
         window.addEventListener("keydown", function (event) {
             if (event.key === "Escape" && menuView === MENU_VIEWS.HOW_TO_PLAY) {
                 showMainMenu();
             }
         });
 
-        devModeToggle.checked = !!settings.devMode;
+        devModeToggle.checked = false;
+        saveGameSettings();
+        resetLaunchSettings();
         setMenuView(MENU_VIEWS.MAIN);
         startMenuScene();
     })();
