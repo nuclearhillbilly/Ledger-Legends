@@ -149,6 +149,10 @@
     const SHIELD_PICKUP_RESPAWN_MIN_METERS = 540;
     const SHIELD_PICKUP_RESPAWN_MAX_METERS = 860;
     const SHIELD_PICKUP_SIZE = 38;
+    const SHIELD_ART_TRIM_LEFT = 181 / 1024;
+    const SHIELD_ART_TRIM_TOP = 110 / 1024;
+    const SHIELD_ART_TRIM_WIDTH = 675 / 1024;
+    const SHIELD_ART_TRIM_HEIGHT = 764 / 1024;
     const imageOpaqueBoundsCache = new WeakMap();
 
     function clamp(value, min, max) {
@@ -753,6 +757,22 @@
                 directionMin: 0,
                 directionMax: Math.PI * 2
             });
+        }
+
+        function grantShieldReward(x, y) {
+            state.shieldCharges = 1;
+            addFloatingText("Shield Ready", x, y - 12, "#93c5fd", 1020);
+            spawnShieldBurst(x, y);
+            startScreenShake(120, 3.2);
+        }
+
+        function registerShieldQuestionMiss() {
+            if (!player) {
+                return;
+            }
+
+            addFloatingText("Shield Missed", player.centerX, player.hitboxTopY - 18, "#fcd34d", 940);
+            startScreenShake(72, 2.1);
         }
 
         function registerCorrectAnswer() {
@@ -1808,6 +1828,7 @@
                 lavaRiver: ["assets/river-lava.png"],
                 lava: ["assets/lava.png"],
                 monsterLava: ["assets/monster-lava.png"],
+                shield: ["assets/shield.png"],
                 arrow: ["assets/arrow.png"],
                 birdUp: ["assets/BirdSprite_WingsUp.png", "assets/birdsprite_wingsup.png"],
                 birdDown: ["assets/BirdSprite_WingDown.png", "assets/birdsprite_wingdown.png"],
@@ -2262,7 +2283,7 @@
         }
 
         function collectShieldPickup() {
-            if (!state.shieldPickup || !player) {
+            if (!state.shieldPickup || !player || state.isQuestionActive) {
                 return false;
             }
 
@@ -2277,12 +2298,25 @@
                 return false;
             }
 
-            state.shieldCharges = 1;
             state.shieldPickup = null;
-            addFloatingText("Shield Ready", pickup.x, centerY - 12, "#93c5fd", 1020);
-            spawnShieldBurst(pickup.x, centerY);
-            startScreenShake(120, 3.2);
-            updateHud();
+            void triggerQuestion({
+                sinkPlayer: false,
+                wrongAction: "resume",
+                neutralWrong: true,
+                respawnOnCorrect: false,
+                continueLabels: {
+                    default: "Continue",
+                    correct: "Claim Shield",
+                    wrong: "Keep Running"
+                },
+                onCorrect: function () {
+                    grantShieldReward(pickup.x, centerY);
+                },
+                onWrong: function () {
+                    registerShieldQuestionMiss();
+                }
+            });
+
             return true;
         }
 
@@ -2332,30 +2366,56 @@
             ctx.fill();
 
             ctx.globalCompositeOperation = "source-over";
-            ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
-            ctx.beginPath();
-            ctx.moveTo(0, -size * 0.54);
-            ctx.lineTo(size * 0.44, -size * 0.18);
-            ctx.lineTo(size * 0.34, size * 0.36);
-            ctx.lineTo(0, size * 0.56);
-            ctx.lineTo(-size * 0.34, size * 0.36);
-            ctx.lineTo(-size * 0.44, -size * 0.18);
-            ctx.closePath();
-            ctx.fill();
+            const shieldImage = assets.images.shield;
+            if (imageReady(shieldImage)) {
+                const sourceX = Math.round(shieldImage.naturalWidth * SHIELD_ART_TRIM_LEFT);
+                const sourceY = Math.round(shieldImage.naturalHeight * SHIELD_ART_TRIM_TOP);
+                const sourceWidth = Math.round(shieldImage.naturalWidth * SHIELD_ART_TRIM_WIDTH);
+                const sourceHeight = Math.round(shieldImage.naturalHeight * SHIELD_ART_TRIM_HEIGHT);
+                const drawHeight = size * 1.3;
+                const drawWidth = drawHeight * (sourceWidth / sourceHeight);
 
-            ctx.strokeStyle = "#dbeafe";
-            ctx.lineWidth = Math.max(2, size * 0.08);
-            ctx.stroke();
+                ctx.save();
+                ctx.globalAlpha = 0.94 + (0.06 * pulse);
+                ctx.filter = `drop-shadow(0 0 ${Math.max(10, size * 0.4)}px rgba(125, 211, 252, ${0.26 + (0.16 * pulse)}))`;
+                ctx.drawImage(
+                    shieldImage,
+                    sourceX,
+                    sourceY,
+                    sourceWidth,
+                    sourceHeight,
+                    -drawWidth / 2,
+                    -drawHeight / 2,
+                    drawWidth,
+                    drawHeight
+                );
+                ctx.restore();
+            } else {
+                ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
+                ctx.beginPath();
+                ctx.moveTo(0, -size * 0.54);
+                ctx.lineTo(size * 0.44, -size * 0.18);
+                ctx.lineTo(size * 0.34, size * 0.36);
+                ctx.lineTo(0, size * 0.56);
+                ctx.lineTo(-size * 0.34, size * 0.36);
+                ctx.lineTo(-size * 0.44, -size * 0.18);
+                ctx.closePath();
+                ctx.fill();
 
-            ctx.strokeStyle = "#7dd3fc";
-            ctx.lineWidth = Math.max(2, size * 0.06);
-            ctx.beginPath();
-            ctx.moveTo(0, -size * 0.34);
-            ctx.lineTo(0, size * 0.28);
-            ctx.moveTo(-size * 0.18, -size * 0.04);
-            ctx.lineTo(0, -size * 0.2);
-            ctx.lineTo(size * 0.18, -size * 0.04);
-            ctx.stroke();
+                ctx.strokeStyle = "#dbeafe";
+                ctx.lineWidth = Math.max(2, size * 0.08);
+                ctx.stroke();
+
+                ctx.strokeStyle = "#7dd3fc";
+                ctx.lineWidth = Math.max(2, size * 0.06);
+                ctx.beginPath();
+                ctx.moveTo(0, -size * 0.34);
+                ctx.lineTo(0, size * 0.28);
+                ctx.moveTo(-size * 0.18, -size * 0.04);
+                ctx.lineTo(0, -size * 0.2);
+                ctx.lineTo(size * 0.18, -size * 0.04);
+                ctx.stroke();
+            }
             ctx.restore();
         }
 
@@ -2958,7 +3018,14 @@
 
             const config = Object.assign({
                 respawnTargetX: player.centerX,
-                sinkPlayer: true
+                sinkPlayer: true,
+                wrongAction: "endRun",
+                neutralWrong: false,
+                respawnOnCorrect: true,
+                respawnOnWrong: false,
+                continueLabels: null,
+                onCorrect: null,
+                onWrong: null
             }, options);
             const respawnTargetX = config.respawnTargetX;
             state.isQuestionActive = true;
@@ -2978,17 +3045,31 @@
                 state.bestAnswerStreak = Math.max(state.bestAnswerStreak, state.answerStreak);
                 state.questionsCorrect += 1;
                 registerCorrectAnswer();
+
+                if (typeof config.onCorrect === "function") {
+                    config.onCorrect({
+                        isCorrect: true,
+                        skipped: true,
+                        question: null
+                    });
+                }
+
                 state.isQuestionActive = false;
                 dom.cornerControls.classList.remove("hidden");
-                respawnPlayer(respawnTargetX);
+
+                if (config.respawnOnCorrect) {
+                    respawnPlayer(respawnTargetX);
+                }
+
                 updateHud();
                 updateMobileControlsVisibility();
-                logDev("Skipped question and respawned safely.");
+                logDev(config.respawnOnCorrect ? "Skipped question and respawned safely." : "Skipped question and applied reward.");
                 return;
             }
 
             const result = await questionEngine.ask({
-                autoCorrect: state.dev.enabled && state.dev.autoCorrectQuestions
+                autoCorrect: state.dev.enabled && state.dev.autoCorrectQuestions,
+                continueLabels: config.continueLabels
             });
             state.questionsAnswered += 1;
             state.isQuestionActive = false;
@@ -2999,10 +3080,28 @@
                 state.bestAnswerStreak = Math.max(state.bestAnswerStreak, state.answerStreak);
                 state.questionsCorrect += 1;
                 registerCorrectAnswer();
-                respawnPlayer(respawnTargetX);
+
+                if (typeof config.onCorrect === "function") {
+                    config.onCorrect(result);
+                }
+
+                if (config.respawnOnCorrect) {
+                    respawnPlayer(respawnTargetX);
+                }
             } else {
-                registerWrongAnswer();
-                endRun();
+                if (!config.neutralWrong) {
+                    registerWrongAnswer();
+                }
+
+                if (typeof config.onWrong === "function") {
+                    config.onWrong(result);
+                }
+
+                if (config.wrongAction === "endRun") {
+                    endRun();
+                } else if (config.respawnOnWrong) {
+                    respawnPlayer(respawnTargetX);
+                }
             }
 
             updateHud();
@@ -3052,7 +3151,12 @@
             updateShieldPickup();
             maybeSpawnShieldPickup();
             const collectedCoins = collectCoins();
-            collectShieldPickup();
+            const startedShieldQuestion = collectShieldPickup();
+
+            if (startedShieldQuestion) {
+                updateHud();
+                return;
+            }
 
             if (jumpedThisFrame) {
                 tryTriggerPlayerDialogue("jump", 0.36);

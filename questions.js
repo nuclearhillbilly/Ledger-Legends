@@ -193,12 +193,31 @@
             this.questionTextEl = questionTextEl;
             this.optionsEl = optionsEl;
             this.feedbackEl = feedbackEl;
+            this.paperViewport = root ? root.querySelector(".question-paper-panel") : null;
+            this.paperPanel = root ? (root.querySelector(".question-safe-column") || this.paperViewport) : null;
+            this.contentStack = root ? root.querySelector(".question-content-stack") : null;
+            this.continueButtonEl = root ? root.querySelector(".question-continue-button") : null;
             this.currentQuestion = null;
             this.resolveAnswer = null;
+            this.pendingResult = null;
+            this.awaitingContinue = false;
+            this.activeContinueLabels = null;
             this.lastQuestionId = null;
             this.deck = [];
             this.category = normalizeCategory(config && config.category);
             this.handleKeydown = this.handleKeydown.bind(this);
+            this.handleContinue = this.handleContinue.bind(this);
+            this.densityClasses = [
+                "question-box--dense",
+                "question-box--extra-dense",
+                "question-box--ultra-dense",
+                "question-box--micro-dense"
+            ];
+
+            if (this.continueButtonEl) {
+                this.continueButtonEl.addEventListener("click", this.handleContinue);
+            }
+
             this.buildDeck();
         }
 
@@ -252,31 +271,86 @@
             return question;
         }
 
-        applyDensityClass(question) {
+        isBinaryQuestion(question) {
+            return !!(question && question.options && question.options.length === 2);
+        }
+
+        getStartingDensityIndex(question) {
             const totalLength = question.question.length + question.options.join(" ").length;
             const longestOptionLength = question.options.reduce((longest, option) => {
                 return Math.max(longest, option.length);
             }, 0);
             const questionLength = question.question.length;
 
-            this.root.classList.remove("question-box--dense", "question-box--extra-dense", "question-box--ultra-dense");
-
-            if (totalLength > 190 || longestOptionLength > 72 || questionLength > 92) {
-                this.root.classList.add("question-box--ultra-dense");
-            } else if (totalLength > 150 || longestOptionLength > 58 || questionLength > 74) {
-                this.root.classList.add("question-box--extra-dense");
-            } else if (totalLength > 115 || longestOptionLength > 46 || questionLength > 60) {
-                this.root.classList.add("question-box--dense");
+            if (totalLength > 210 || longestOptionLength > 76 || questionLength > 96) {
+                return 3;
             }
+
+            if (totalLength > 172 || longestOptionLength > 62 || questionLength > 80) {
+                return 2;
+            }
+
+            if (totalLength > 126 || longestOptionLength > 50 || questionLength > 64) {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        applyLayoutClass(question, densityIndex) {
+            this.root.classList.remove("question-box--binary");
+            this.densityClasses.forEach((className) => {
+                this.root.classList.remove(className);
+            });
+
+            if (this.isBinaryQuestion(question)) {
+                this.root.classList.add("question-box--binary");
+            }
+
+            if (densityIndex > 0) {
+                const densityClass = this.densityClasses[densityIndex - 1];
+                if (densityClass) {
+                    this.root.classList.add(densityClass);
+                }
+            }
+        }
+
+        fitQuestionLayout(question) {
+            if (!this.paperPanel || !this.paperViewport) {
+                this.applyLayoutClass(question, this.getStartingDensityIndex(question));
+                return;
+            }
+
+            const startingDensityIndex = this.getStartingDensityIndex(question);
+            const maxDensityIndex = this.densityClasses.length;
+
+            for (let densityIndex = startingDensityIndex; densityIndex <= maxDensityIndex; densityIndex += 1) {
+                this.applyLayoutClass(question, densityIndex);
+                this.paperViewport.scrollTop = 0;
+
+                if (this.paperPanel.scrollHeight <= this.paperViewport.clientHeight + 1) {
+                    return;
+                }
+            }
+
+            this.applyLayoutClass(question, maxDensityIndex);
         }
 
         renderQuestion(question) {
             this.currentQuestion = question;
-            this.applyDensityClass(question);
+            this.pendingResult = null;
+            this.awaitingContinue = false;
             this.questionTextEl.textContent = question.question;
             this.optionsEl.innerHTML = "";
             this.feedbackEl.textContent = "";
             this.feedbackEl.dataset.state = "";
+
+            if (this.continueButtonEl) {
+                this.continueButtonEl.classList.add("hidden");
+                this.continueButtonEl.disabled = true;
+                this.continueButtonEl.dataset.state = "";
+                this.continueButtonEl.textContent = this.getContinueButtonLabel("default");
+            }
 
             question.options.forEach((option, index) => {
                 const button = document.createElement("button");
@@ -291,10 +365,12 @@
                 });
                 this.optionsEl.appendChild(button);
             });
+
+            this.fitQuestionLayout(question);
         }
 
         submitAnswer(index) {
-            if (!this.currentQuestion || !this.resolveAnswer) {
+            if (!this.currentQuestion || !this.resolveAnswer || this.awaitingContinue) {
                 return;
             }
 
@@ -307,22 +383,69 @@
 
             this.feedbackEl.dataset.state = isCorrect ? "correct" : "wrong";
             this.feedbackEl.textContent = `${isCorrect ? "Correct." : "Incorrect."} ${explanation}`;
+            this.pendingResult = {
+                isCorrect: isCorrect,
+                question: this.currentQuestion
+            };
+            this.awaitingContinue = true;
+
+            if (this.continueButtonEl) {
+                this.continueButtonEl.textContent = this.getContinueButtonLabel(isCorrect ? "correct" : "wrong");
+                this.continueButtonEl.dataset.state = isCorrect ? "correct" : "wrong";
+                this.continueButtonEl.disabled = false;
+                this.continueButtonEl.classList.remove("hidden");
+            }
+
+            this.fitQuestionLayout(this.currentQuestion);
+
+            if (this.continueButtonEl) {
+                window.requestAnimationFrame(() => {
+                    if (this.awaitingContinue && this.continueButtonEl && !this.continueButtonEl.classList.contains("hidden")) {
+                        this.continueButtonEl.focus();
+                    }
+                });
+            }
+        }
+
+        handleContinue() {
+            if (!this.awaitingContinue || !this.pendingResult || !this.resolveAnswer) {
+                return;
+            }
 
             const resolver = this.resolveAnswer;
-            const question = this.currentQuestion;
-            this.resolveAnswer = null;
+            const result = this.pendingResult;
 
-            window.setTimeout(() => {
-                this.hide();
-                resolver({
-                    isCorrect: isCorrect,
-                    question: question
-                });
-            }, 1250);
+            this.resolveAnswer = null;
+            this.pendingResult = null;
+            this.awaitingContinue = false;
+            this.hide();
+            resolver(result);
+        }
+
+        getContinueButtonLabel(state) {
+            const labels = this.activeContinueLabels || {};
+
+            if (state === "correct") {
+                return labels.correct || "Continue Run";
+            }
+
+            if (state === "wrong") {
+                return labels.wrong || "See Results";
+            }
+
+            return labels.default || "Continue";
         }
 
         handleKeydown(event) {
             if (this.root.classList.contains("hidden")) {
+                return;
+            }
+
+            if (this.awaitingContinue) {
+                if (event.code === "Enter" || event.code === "NumpadEnter" || event.code === "Space") {
+                    event.preventDefault();
+                    this.handleContinue();
+                }
                 return;
             }
 
@@ -355,6 +478,15 @@
             this.root.classList.add("hidden");
             window.removeEventListener("keydown", this.handleKeydown);
             this.currentQuestion = null;
+            this.pendingResult = null;
+            this.awaitingContinue = false;
+            this.activeContinueLabels = null;
+
+            if (this.continueButtonEl) {
+                this.continueButtonEl.classList.add("hidden");
+                this.continueButtonEl.disabled = true;
+                this.continueButtonEl.dataset.state = "";
+            }
         }
 
         ask(options) {
@@ -363,8 +495,9 @@
             }
 
             const question = this.nextQuestion();
-            this.renderQuestion(question);
+            this.activeContinueLabels = options && options.continueLabels ? options.continueLabels : null;
             this.show();
+            this.renderQuestion(question);
 
             return new Promise((resolve) => {
                 this.resolveAnswer = resolve;

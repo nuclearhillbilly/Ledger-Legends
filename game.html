@@ -111,10 +111,15 @@
     <section id="questionBox" class="question-box hidden" aria-live="assertive" aria-modal="true" role="dialog">
         <div class="question-scroll-content">
             <div class="question-paper-panel">
-                <p class="question-kicker">Accounting Challenge</p>
-                <h2 id="questionText">Question</h2>
-                <div id="options" class="question-options"></div>
-                <p id="feedback" class="feedback"></p>
+                <div class="question-safe-column">
+                    <div class="question-content-stack">
+                        <p class="question-kicker">Accounting Challenge</p>
+                        <h2 id="questionText">Question</h2>
+                        <div id="options" class="question-options"></div>
+                    </div>
+                    <p id="feedback" class="feedback"></p>
+                    <button type="button" class="question-continue-button hidden">Continue</button>
+                </div>
             </div>
         </div>
     </section>

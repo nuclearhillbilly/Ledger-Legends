@@ -592,11 +592,96 @@ body[data-menu-view="how-to-play"] .menu-view-main {
         0 0 18px rgba(255, 224, 113, 0.42);
 }
 
+.how-screen-body {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: min(700px, 100%);
+}
+
+.how-screen-guide {
+    position: absolute;
+    left: clamp(-220px, -17vw, -150px);
+    top: 50%;
+    width: min(220px, 32vw);
+    min-height: 320px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    transform: translateY(-34%);
+}
+
+.how-screen-guide-bubble {
+    position: absolute;
+    right: calc(100% - 150px);
+    top: -84px;
+    width: min(432px, 204%);
+    aspect-ratio: 3 / 2;
+    transform: scaleX(-1);
+    transform-origin: center;
+    pointer-events: none;
+}
+
+.how-screen-guide-bubble-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 10px 14px rgba(58, 28, 8, 0.22));
+    image-rendering: pixelated;
+}
+
+.how-screen-guide-bubble-text {
+    position: absolute;
+    inset: 24% 24% 43% 24%;
+    display: grid;
+    place-items: center;
+    color: #714117;
+    font-family: "Press Start 2P", "Lucida Console", monospace;
+    font-size: clamp(0.38rem, 0.5vw, 0.44rem);
+    line-height: 1.34;
+    text-align: center;
+    text-shadow: 0 1px 0 rgba(255, 249, 234, 0.72);
+    overflow-wrap: anywhere;
+    white-space: normal;
+    padding: 0 4px;
+    transform: scaleX(-1);
+    transform-origin: center;
+}
+
+.how-screen-guide-sprite {
+    position: relative;
+    width: min(220px, 100%);
+    aspect-ratio: 1 / 1.3;
+    filter: drop-shadow(0 14px 18px rgba(34, 17, 7, 0.28));
+}
+
+.how-screen-brandon {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center bottom;
+    mix-blend-mode: normal;
+    image-rendering: pixelated;
+}
+
+.how-screen-brandon-standing {
+    opacity: 1;
+    animation: howScreenStandSwap 1.45s steps(1, end) infinite;
+}
+
+.how-screen-brandon-waving {
+    opacity: 0;
+    animation: howScreenWaveSwap 1.45s steps(1, end) infinite;
+}
+
 .how-screen-copy {
     display: grid;
     gap: 22px;
     justify-items: center;
-    width: min(700px, 100%);
+    width: min(640px, 100%);
 }
 
 .how-screen-section {
@@ -882,6 +967,32 @@ body[data-menu-view="how-to-play"] .menu-runner-lane {
     50% {
         opacity: 1;
         transform: scale(1.06);
+    }
+}
+
+@keyframes howScreenStandSwap {
+    0%,
+    44%,
+    100% {
+        opacity: 1;
+    }
+
+    45%,
+    82% {
+        opacity: 0;
+    }
+}
+
+@keyframes howScreenWaveSwap {
+    0%,
+    44%,
+    100% {
+        opacity: 0;
+    }
+
+    45%,
+    82% {
+        opacity: 1;
     }
 }
 
@@ -1640,10 +1751,10 @@ canvas {
 
 .question-scroll-content {
     position: absolute;
-    inset: 21.5% 15% 12.8% 15%;
+    inset: 24.8% 14.5% 23.6% 14.5%;
     display: flex;
-    align-items: stretch;
-    justify-content: stretch;
+    align-items: center;
+    justify-content: center;
     padding: 0;
     overflow: hidden;
 }
@@ -1651,33 +1762,51 @@ canvas {
 .question-paper-panel {
     width: 100%;
     height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    align-items: center;
     gap: clamp(8px, 1vw, 12px);
-    padding: clamp(18px, 2.2vw, 28px) clamp(18px, 2.3vw, 30px) clamp(14px, 1.9vw, 22px);
+    padding: 0;
     border-radius: 0;
     background: transparent;
     border: none;
     box-shadow: none;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(83, 52, 20, 0.34) transparent;
+    overflow: hidden;
 }
 
-.question-paper-panel::-webkit-scrollbar {
-    width: 6px;
+.question-safe-column {
+    width: min(100%, 74%);
+    max-width: 30rem;
+    min-height: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(8px, 1vw, 12px);
+    margin: auto 0;
 }
 
-.question-paper-panel::-webkit-scrollbar-track {
-    background: transparent;
+.question-content-stack {
+    display: flex;
+    flex: 0 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: clamp(8px, 1vw, 12px);
+    width: 100%;
 }
 
-.question-paper-panel::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(83, 52, 20, 0.34);
+.question-box--binary .question-safe-column,
+.question-box--binary .question-content-stack {
+    justify-content: center;
+}
+
+.question-box--binary .question-options {
+    margin-top: 4px;
 }
 
 .question-kicker {
@@ -1687,35 +1816,41 @@ canvas {
     letter-spacing: 0.12em;
     font-size: clamp(0.72rem, 0.94vw, 0.86rem);
     text-align: center;
+    width: 100%;
+    max-width: 92%;
 }
 
 .question-box h2 {
     margin: 0;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(0.92rem, 1.32vw, 1.18rem);
-    line-height: 1.16;
+    font-size: clamp(0.94rem, 1.28vw, 1.16rem);
+    line-height: 1.18;
     text-align: center;
     color: var(--scroll-ink);
-    max-width: 100%;
+    width: 100%;
+    max-width: 92%;
     align-self: center;
+    padding: 0;
 }
 
 .question-options {
     width: 100%;
+    max-width: 100%;
     margin: 0 auto;
     display: grid;
-    gap: 5px;
+    gap: clamp(6px, 0.7vw, 10px);
 }
 
 .question-box .option-button {
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: start;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
-    padding: 1px 0;
+    padding: 2px 0;
     text-align: left;
-    font-size: clamp(0.8rem, 0.94vw, 0.88rem);
+    font-size: clamp(0.82rem, 0.96vw, 0.9rem);
+    line-height: 1.24;
     color: var(--scroll-ink);
     background: transparent;
     box-shadow: none;
@@ -1723,7 +1858,7 @@ canvas {
 }
 
 .question-box .option-number {
-    min-width: 1.45rem;
+    min-width: 1.55rem;
     color: var(--scroll-ink);
     text-align: right;
 }
@@ -1731,7 +1866,7 @@ canvas {
 .question-box .option-label {
     display: block;
     color: inherit;
-    line-height: 1.18;
+    line-height: 1.24;
     white-space: normal;
     overflow-wrap: anywhere;
 }
@@ -1746,14 +1881,19 @@ canvas {
 }
 
 .feedback {
-    min-height: 30px;
+    min-height: 0;
     margin: 2px auto 0;
-    line-height: 1.32;
+    line-height: 1.3;
     color: var(--scroll-ink);
     text-align: center;
     font-weight: 800;
-    font-size: clamp(0.72rem, 0.9vw, 0.82rem);
+    font-size: clamp(0.7rem, 0.86vw, 0.8rem);
     width: 100%;
+    max-width: 92%;
+}
+
+.feedback:empty {
+    display: none;
 }
 
 .feedback[data-state="correct"],
@@ -1761,30 +1901,79 @@ canvas {
     color: var(--scroll-ink);
 }
 
-.question-box--dense .question-scroll-content {
-    inset: 21.8% 14.3% 12.5% 14.3%;
+.question-continue-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    min-width: min(100%, 220px);
+    max-width: 92%;
+    min-height: 42px;
+    margin-top: 4px;
+    padding: 10px 18px;
+    border: 2px solid rgba(86, 54, 20, 0.92);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 244, 209, 0.98), rgba(238, 203, 135, 0.98));
+    box-shadow:
+        0 4px 0 rgba(105, 69, 28, 0.58),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    color: var(--scroll-ink);
+    font-family: "Press Start 2P", "Lucida Console", monospace;
+    font-size: clamp(0.54rem, 0.68vw, 0.64rem);
+    line-height: 1.35;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.question-continue-button[data-state="wrong"] {
+    background: linear-gradient(180deg, rgba(255, 229, 206, 0.98), rgba(238, 161, 117, 0.98));
+}
+
+.question-continue-button:hover,
+.question-continue-button:focus-visible {
+    transform: translateY(-1px);
+    box-shadow:
+        0 6px 0 rgba(105, 69, 28, 0.58),
+        inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    outline: none;
+}
+
+.question-box--dense .question-continue-button {
+    min-height: 40px;
+    font-size: clamp(0.5rem, 0.62vw, 0.6rem);
+}
+
+.question-box--extra-dense .question-continue-button {
+    min-height: 38px;
+    font-size: clamp(0.46rem, 0.58vw, 0.56rem);
+}
+
+.question-box--ultra-dense .question-continue-button,
+.question-box--micro-dense .question-continue-button {
+    min-height: 36px;
+    font-size: clamp(0.42rem, 0.54vw, 0.52rem);
 }
 
 .question-box--dense h2 {
-    font-size: clamp(0.84rem, 1.14vw, 1rem);
+    font-size: clamp(0.84rem, 1.1vw, 1rem);
 }
 
 .question-box--dense .option-button {
-    font-size: clamp(0.74rem, 0.86vw, 0.82rem);
-    gap: 7px;
-}
-
-.question-box--extra-dense .question-scroll-content {
-    inset: 21.9% 13.5% 12.3% 13.5%;
+    font-size: clamp(0.74rem, 0.84vw, 0.82rem);
+    gap: 8px;
 }
 
 .question-box--extra-dense h2 {
-    font-size: clamp(0.76rem, 0.98vw, 0.9rem);
-    line-height: 1.1;
+    font-size: clamp(0.76rem, 0.94vw, 0.9rem);
+    line-height: 1.12;
 }
 
 .question-box--extra-dense .option-button {
-    font-size: clamp(0.68rem, 0.78vw, 0.76rem);
+    font-size: clamp(0.68rem, 0.76vw, 0.76rem);
     gap: 6px;
 }
 
@@ -1793,16 +1982,11 @@ canvas {
 }
 
 .question-box--extra-dense .feedback {
-    min-height: 24px;
     font-size: clamp(0.64rem, 0.72vw, 0.72rem);
 }
 
-.question-box--ultra-dense .question-scroll-content {
-    inset: 22% 12.8% 12% 12.8%;
-}
-
 .question-box--ultra-dense h2 {
-    font-size: clamp(0.7rem, 0.86vw, 0.82rem);
+    font-size: clamp(0.7rem, 0.84vw, 0.82rem);
     line-height: 1.08;
 }
 
@@ -1816,8 +2000,29 @@ canvas {
 }
 
 .question-box--ultra-dense .feedback {
-    min-height: 22px;
     font-size: clamp(0.58rem, 0.64vw, 0.64rem);
+}
+
+.question-box--micro-dense .question-content-stack {
+    gap: 5px;
+}
+
+.question-box--micro-dense h2 {
+    font-size: clamp(0.64rem, 0.74vw, 0.76rem);
+    line-height: 1.06;
+}
+
+.question-box--micro-dense .option-button {
+    font-size: clamp(0.56rem, 0.62vw, 0.64rem);
+    gap: 5px;
+}
+
+.question-box--micro-dense .option-number {
+    min-width: 1rem;
+}
+
+.question-box--micro-dense .feedback {
+    font-size: clamp(0.52rem, 0.58vw, 0.58rem);
 }
 
 @media (max-width: 720px) {
@@ -1855,8 +2060,36 @@ canvas {
         transform: none;
     }
 
+    .how-screen-body {
+        width: min(500px, 100%);
+    }
+
+    .how-screen-guide {
+        left: clamp(-148px, -18vw, -108px);
+        min-height: 270px;
+        width: min(168px, 32vw);
+    }
+
+    .how-screen-guide-bubble {
+        right: calc(100% - 120px);
+        top: -68px;
+        width: min(360px, 214%);
+        transform: scaleX(-1);
+    }
+
+    .how-screen-guide-bubble-text {
+        inset: 24% 24% 43% 24%;
+        font-size: 0.34rem;
+        line-height: 1.3;
+    }
+
+    .how-screen-guide-sprite {
+        width: min(168px, 100%);
+    }
+
     .how-screen-copy {
         gap: 18px;
+        width: min(500px, 100%);
     }
 
     .how-screen-list {
@@ -2131,18 +2364,26 @@ canvas {
     }
 
     .question-scroll-content {
-        inset: 21.6% 12.2% 12.4% 12.2%;
-    }
-
-    .question-box--dense .question-scroll-content,
-    .question-box--extra-dense .question-scroll-content,
-    .question-box--ultra-dense .question-scroll-content {
-        inset: 21.8% 11.8% 12.1% 11.8%;
+        inset: 24.8% 14.2% 23.8% 14.2%;
     }
 
     .question-paper-panel {
         gap: 7px;
-        padding: 16px 16px 14px;
+        padding: 0;
+    }
+
+    .question-safe-column {
+        width: min(100%, 80%);
+        gap: 7px;
+    }
+
+    .question-content-stack {
+        gap: 7px;
+    }
+
+    .question-box h2 {
+        font-size: clamp(0.84rem, 1.9vw, 1rem);
+        line-height: 1.16;
     }
 
     .question-box .option-button {
@@ -2151,8 +2392,13 @@ canvas {
     }
 
     .feedback {
-        min-height: 26px;
         font-size: 0.66rem;
+    }
+
+    .question-continue-button {
+        min-width: min(100%, 200px);
+        min-height: 38px;
+        font-size: 0.5rem;
     }
 }
 
@@ -2176,6 +2422,37 @@ canvas {
         gap: 16px;
     }
 
+    .how-screen-body {
+        width: 100%;
+        gap: 14px;
+    }
+
+    .how-screen-guide {
+        position: relative;
+        left: auto;
+        top: auto;
+        transform: none;
+        min-height: 244px;
+        width: min(180px, 58vw);
+    }
+
+    .how-screen-guide-bubble {
+        right: calc(100% - 114px);
+        top: -48px;
+        width: min(298px, 98vw);
+        transform: scaleX(-1);
+    }
+
+    .how-screen-guide-bubble-text {
+        inset: 24% 24% 43% 24%;
+        font-size: 0.28rem;
+        line-height: 1.24;
+    }
+
+    .how-screen-guide-sprite {
+        width: min(156px, 54vw);
+    }
+
     .how-screen-title {
         font-size: clamp(1.45rem, 9vw, 2.2rem);
         letter-spacing: 0.1em;
@@ -2187,6 +2464,7 @@ canvas {
 
     .how-screen-copy {
         gap: 16px;
+        width: min(100%, 92vw);
     }
 
     .how-screen-list {
@@ -2389,18 +2667,21 @@ canvas {
     }
 
     .question-scroll-content {
-        inset: 21.8% 10.2% 12.1% 10.2%;
-    }
-
-    .question-box--dense .question-scroll-content,
-    .question-box--extra-dense .question-scroll-content,
-    .question-box--ultra-dense .question-scroll-content {
-        inset: 22% 9.6% 11.8% 9.6%;
+        inset: 24.8% 13% 23.2% 13%;
     }
 
     .question-paper-panel {
         gap: 6px;
-        padding: 14px 12px 12px;
+        padding: 0;
+    }
+
+    .question-safe-column {
+        width: min(100%, 84%);
+        gap: 6px;
+    }
+
+    .question-content-stack {
+        gap: 6px;
     }
 
     .question-kicker {
@@ -2423,7 +2704,13 @@ canvas {
 
     .feedback {
         font-size: 0.6rem;
-        min-height: 22px;
+    }
+
+    .question-continue-button {
+        min-width: min(100%, 180px);
+        min-height: 36px;
+        padding: 8px 14px;
+        font-size: 0.42rem;
     }
 }
 
@@ -2454,6 +2741,10 @@ canvas {
     .how-screen-stack {
         gap: 16px;
         transform: none;
+    }
+
+    .how-screen-body {
+        align-items: center;
     }
 
     .how-screen-copy {
@@ -2504,12 +2795,23 @@ canvas {
     .menu-toggle-box,
     .menu-title-image,
     .menu-title-wrap::before,
-    .menu-runner-bubble {
+    .menu-runner-bubble,
+    .how-screen-brandon-standing,
+    .how-screen-brandon-waving {
         transition: none;
     }
 
     .menu-title-image,
     .menu-title-wrap::before {
         animation: none;
+    }
+
+    .how-screen-brandon-standing,
+    .how-screen-brandon-waving {
+        animation: none;
+    }
+
+    .how-screen-brandon-waving {
+        opacity: 0;
     }
 }

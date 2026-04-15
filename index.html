@@ -41,26 +41,39 @@
             <div class="how-screen-stack">
                 <h2 id="howToPlayTitle" class="how-screen-title">How to Play</h2>
 
-                <div class="how-screen-copy" aria-label="Instructions and controls">
-                    <section class="how-screen-section" aria-labelledby="howToPlayBasicsTitle">
-                        <h3 id="howToPlayBasicsTitle" class="how-screen-section-title">Instructions</h3>
-                        <ul class="how-screen-list">
-                            <li>Jump between platforms and keep your run alive.</li>
-                            <li>Avoid the lava, arrows, and other hazards in your path.</li>
-                            <li>Answer accounting questions when danger catches up to you.</li>
-                            <li>Push for the highest distance you can reach.</li>
-                        </ul>
-                    </section>
+                <div class="how-screen-body">
+                    <aside class="how-screen-guide" aria-hidden="true">
+                        <div class="how-screen-guide-bubble">
+                            <img class="how-screen-guide-bubble-image" src="assets/dialogue bubble.png" alt="">
+                            <span class="how-screen-guide-bubble-text">Don't lose the forest for the trees.</span>
+                        </div>
+                        <div class="how-screen-guide-sprite">
+                            <img class="how-screen-brandon how-screen-brandon-standing" src="assets/classmates/brandon standing.png?v=20260414f" alt="">
+                            <img class="how-screen-brandon how-screen-brandon-waving" src="assets/classmates/brandon waving.png?v=20260414f" alt="">
+                        </div>
+                    </aside>
 
-                    <section class="how-screen-section" aria-labelledby="howToPlayControlsTitle">
-                        <h3 id="howToPlayControlsTitle" class="how-screen-section-title">Controls</h3>
-                        <ul class="how-screen-list">
-                            <li>Move: <span class="how-screen-inline">A / D</span> or <span class="how-screen-inline">Left / Right</span></li>
-                            <li>Jump: <span class="how-screen-inline">Space</span>, <span class="how-screen-inline">W</span>, or <span class="how-screen-inline">Up</span></li>
-                            <li>Mobile: Use the on-screen <span class="how-screen-inline">Left</span>, <span class="how-screen-inline">Right</span>, and <span class="how-screen-inline">Jump</span> buttons</li>
-                            <li>Touch or click prompts when the game asks for an answer.</li>
-                        </ul>
-                    </section>
+                    <div class="how-screen-copy" aria-label="Instructions and controls">
+                        <section class="how-screen-section" aria-labelledby="howToPlayBasicsTitle">
+                            <h3 id="howToPlayBasicsTitle" class="how-screen-section-title">Instructions</h3>
+                            <ul class="how-screen-list">
+                                <li>Jump between platforms and keep your run alive.</li>
+                                <li>Avoid the lava, arrows, and other hazards in your path.</li>
+                                <li>Answer accounting questions when danger catches up to you.</li>
+                                <li>Push for the highest distance you can reach.</li>
+                            </ul>
+                        </section>
+
+                        <section class="how-screen-section" aria-labelledby="howToPlayControlsTitle">
+                            <h3 id="howToPlayControlsTitle" class="how-screen-section-title">Controls</h3>
+                            <ul class="how-screen-list">
+                                <li>Move: <span class="how-screen-inline">A / D</span> or <span class="how-screen-inline">Left / Right</span></li>
+                                <li>Jump: <span class="how-screen-inline">Space</span>, <span class="how-screen-inline">W</span>, or <span class="how-screen-inline">Up</span></li>
+                                <li>Mobile: Use the on-screen <span class="how-screen-inline">Left</span>, <span class="how-screen-inline">Right</span>, and <span class="how-screen-inline">Jump</span> buttons</li>
+                                <li>Touch or click prompts when the game asks for an answer.</li>
+                            </ul>
+                        </section>
+                    </div>
                 </div>
 
                 <button id="backToMenuButton" class="menu-action menu-back-action" type="button">Back</button>
@@ -225,7 +238,13 @@
             "assets/birdsprite_wingdown.png"
         ];
 
-        playerFrames.concat(birdFrames).concat(["assets/monster-lava.png", "assets/UI_title.png", "assets/dialogue bubble.png"]).forEach(function (src) {
+        playerFrames.concat(birdFrames).concat([
+            "assets/monster-lava.png",
+            "assets/UI_title.png",
+            "assets/dialogue bubble.png",
+            "assets/classmates/brandon standing.png?v=20260414f",
+            "assets/classmates/brandon waving.png?v=20260414f"
+        ]).forEach(function (src) {
             const image = new Image();
             image.src = src;
         });
